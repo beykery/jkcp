@@ -38,8 +38,10 @@ public class KcpServer extends KcpOnUdp
   @Override
   protected void handleReceive(ByteBuf bb, InetSocketAddress addr)
   {
+    System.out.println(bb.readableBytes());
     String content=bb.toString(Charset.forName("utf-8"));
     System.out.println("receive:"+content);
+    
     this.send(bb, addr);//echo
   }
 
