@@ -56,7 +56,7 @@ public abstract class KcpOnUdp implements Output
   {
     this.kcps = new HashMap<>();
     received = new HashMap<>();
-    final NioEventLoopGroup nioEventLoopGroup = new NioEventLoopGroup();
+    final NioEventLoopGroup nioEventLoopGroup = new NioEventLoopGroup(5);
     Bootstrap bootstrap = new Bootstrap();
     bootstrap.channel(NioDatagramChannel.class);
     bootstrap.group(nioEventLoopGroup);
@@ -113,14 +113,14 @@ public abstract class KcpOnUdp implements Output
    * @param addr
    * @return
    */
-  private Kcp getKcp(InetSocketAddress addr)
+  private Kcp getKcp(InetSocketAddress addr,boolean recreate)
   {
     Kcp kcp = null;
     kcpLock.lock();
     try
     {
       kcp = kcps.get(addr);
-      if (kcp == null)
+      if (kcp == null||recreate)
       {
         kcp = new Kcp(121106, KcpOnUdp.this, addr);
         //mode setting
@@ -144,7 +144,7 @@ public abstract class KcpOnUdp implements Output
    */
   public void send(ByteBuf bb, InetSocketAddress addr)
   {
-    Kcp kcp = this.getKcp(addr);
+    Kcp kcp = this.getKcp(addr,false);
     kcp.send(bb);
   }
 
@@ -276,9 +276,14 @@ public abstract class KcpOnUdp implements Output
       {
         q = new LinkedList<>();
         received.put(dp.sender(), q);
-        this.getKcp(dp.sender());//the first receive,init the kcp.
       }
-      q.add(dp);
+      if(dp.content().readableBytes()>0)
+      {
+        q.add(dp);
+      }else//新链接
+      {
+        this.getKcp(dp.sender(), true);
+      }      
     } finally
     {
       dataLock.unlock();
@@ -295,6 +300,7 @@ public abstract class KcpOnUdp implements Output
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
     {
       DatagramPacket dp = (DatagramPacket) msg;
+      System.out.println("udp received:"+dp);
       KcpOnUdp.this.onReceive(dp);
     }
 

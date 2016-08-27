@@ -479,9 +479,9 @@ public class Kcp
   public int input(ByteBuf data)
   {
     int s_una = snd_una;
-    if (data.readableBytes() < IKCP_OVERHEAD)
+    if (data==null||data.readableBytes() < IKCP_OVERHEAD)
     {
-      return 0;
+      return -1;
     }
     int offset = 0;
     while (true)
