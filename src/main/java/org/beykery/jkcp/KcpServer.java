@@ -35,6 +35,7 @@ public abstract class KcpServer implements Output, KcpListerner
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
   private KcpThread[] workers;
+  private boolean running;
 
   /**
    * server
@@ -48,6 +49,7 @@ public abstract class KcpServer implements Output, KcpListerner
     {
       throw new IllegalArgumentException("参数非法");
     }
+    this.workers = new KcpThread[workerSize];
     final NioEventLoopGroup nioEventLoopGroup = new NioEventLoopGroup();
     Bootstrap bootstrap = new Bootstrap();
     bootstrap.channel(NioDatagramChannel.class);
@@ -62,15 +64,6 @@ public abstract class KcpServer implements Output, KcpListerner
         cp.addLast(new KcpServer.UdpHandler());
       }
     });
-    this.workers = new KcpThread[workerSize];
-    for (int i = 0; i < workerSize; i++)
-    {
-      workers[i] = new KcpThread(this, this);
-      workers[i].wndSize(sndwnd, rcvwnd);
-      workers[i].noDelay(nodelay, interval, resend, nc);
-      workers[i].setMtu(mtu);
-      workers[i].start();
-    }
     ChannelFuture sync = bootstrap.bind(port).syncUninterruptibly();
     channel = (NioDatagramChannel) sync.channel();
     addr = channel.localAddress();
@@ -85,6 +78,25 @@ public abstract class KcpServer implements Output, KcpListerner
   }
 
   /**
+   * 开始
+   */
+  public void start()
+  {
+    if (!this.running)
+    {
+      this.running = true;
+      for (int i = 0; i < this.workers.length; i++)
+      {
+        workers[i] = new KcpThread(this, this);
+        workers[i].wndSize(sndwnd, rcvwnd);
+        workers[i].noDelay(nodelay, interval, resend, nc);
+        workers[i].setMtu(mtu);
+        workers[i].start();
+      }
+    }
+  }
+
+  /**
    * close
    *
    * @return
@@ -92,6 +104,16 @@ public abstract class KcpServer implements Output, KcpListerner
   public ChannelFuture close()
   {
     return this.channel.close();
+  }
+
+  /**
+   * 连接 一旦连接上一个默认地址,则不会再收取其它地址的信息
+   *
+   * @param addr
+   */
+  public void connect(InetSocketAddress addr)
+  {
+    this.channel.connect(addr);
   }
 
   /**
