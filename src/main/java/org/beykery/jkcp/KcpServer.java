@@ -103,7 +103,16 @@ public abstract class KcpServer implements Output, KcpListerner
    */
   public ChannelFuture close()
   {
-    return this.channel.close();
+    if (this.running)
+    {
+      for (KcpThread kt : this.workers)
+      {
+        kt.close();
+      }
+      this.workers = null;
+      return this.channel.close();
+    }
+    return null;
   }
 
   /**
@@ -113,7 +122,10 @@ public abstract class KcpServer implements Output, KcpListerner
    */
   public void connect(InetSocketAddress addr)
   {
-    this.channel.connect(addr);
+    if (!this.running)
+    {
+      this.channel.connect(addr);
+    }
   }
 
   /**

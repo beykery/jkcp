@@ -84,11 +84,25 @@ public class KcpThread extends Thread
     kcps = new HashMap<>();
   }
 
+  /**
+   * 开启线程
+   */
   @Override
   public synchronized void start()
   {
-    this.running = true;
-    super.start();
+    if (!this.running)
+    {
+      this.running = true;
+      super.start();
+    }
+  }
+
+  /**
+   * 关闭线程
+   */
+  public void close()
+  {
+    this.running = false;
   }
 
   @Override
