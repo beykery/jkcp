@@ -3,24 +3,11 @@
  */
 package org.beykery.jkcp;
 
-import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.DatagramPacket;
-import io.netty.channel.socket.nio.NioDatagramChannel;
-import java.net.InetSocketAddress;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,197 +15,18 @@ import org.slf4j.LoggerFactory;
  *
  * @author beykery
  */
-public abstract class KcpOnUdp implements Output
+public class KcpOnUdp
 {
 
   private static final Logger LOG = LoggerFactory.getLogger(KcpOnUdp.class);
-
-  private final NioDatagramChannel channel;
-  private final InetSocketAddress addr;
-  private final Map<InetSocketAddress, Kcp> kcps;
-  private final Map<InetSocketAddress, Queue<DatagramPacket>> received;
-  private final Lock dataLock = new ReentrantLock();
-  private final Lock kcpLock = new ReentrantLock();
-  private int nodelay;
-  private int interval = Kcp.IKCP_INTERVAL;
-  private int resend;
-  private int nc;
-  private int sndwnd = Kcp.IKCP_WND_SND;
-  private int rcvwnd = Kcp.IKCP_WND_RCV;
-  private int mtu = Kcp.IKCP_MTU_DEF;
-
-  /**
-   * kcp for udp
-   *
-   * @param port
-   */
-  public KcpOnUdp(int port)
-  {
-    this.kcps = new HashMap<>();
-    received = new HashMap<>();
-    final NioEventLoopGroup nioEventLoopGroup = new NioEventLoopGroup(5);
-    Bootstrap bootstrap = new Bootstrap();
-    bootstrap.channel(NioDatagramChannel.class);
-    bootstrap.group(nioEventLoopGroup);
-    bootstrap.handler(new ChannelInitializer<NioDatagramChannel>()
-    {
-
-      @Override
-      protected void initChannel(NioDatagramChannel ch) throws Exception
-      {
-        ChannelPipeline cp = ch.pipeline();
-        cp.addLast(new KcpOnUdp.UdpHandler());
-      }
-    });
-    ChannelFuture sync = bootstrap.bind(port).syncUninterruptibly();
-    channel = (NioDatagramChannel) sync.channel();
-    addr = channel.localAddress();
-    Runtime.getRuntime().addShutdownHook(new Thread(new Runnable()
-    {
-      @Override
-      public void run()
-      {
-        nioEventLoopGroup.shutdownGracefully();
-      }
-    }));
-  }
-
-  /**
-   * close
-   *
-   * @return
-   */
-  public ChannelFuture close()
-  {
-    return this.channel.close();
-  }
-
-  /**
-   * kcp call
-   *
-   * @param msg
-   * @param kcp
-   * @param user
-   */
-  @Override
-  public void out(ByteBuf msg, Kcp kcp, Object user)
-  {
-    DatagramPacket temp = new DatagramPacket(msg, (InetSocketAddress) user, this.addr);
-    this.channel.writeAndFlush(temp);
-  }
-
-  /**
-   * one kcp per addr
-   *
-   * @param addr
-   * @return
-   */
-  private Kcp getKcp(InetSocketAddress addr,boolean recreate)
-  {
-    Kcp kcp = null;
-    kcpLock.lock();
-    try
-    {
-      kcp = kcps.get(addr);
-      if (kcp == null||recreate)
-      {
-        kcp = new Kcp(121106, KcpOnUdp.this, addr);
-        //mode setting
-        kcp.noDelay(nodelay, interval, resend, nc);
-        kcp.wndSize(sndwnd, rcvwnd);
-        kcp.setMtu(mtu);
-        kcps.put(addr, kcp);
-      }
-    } finally
-    {
-      kcpLock.unlock();
-    }
-    return kcp;
-  }
-
-  /**
-   * send data to addr
-   *
-   * @param bb
-   * @param addr
-   */
-  public void send(ByteBuf bb, InetSocketAddress addr)
-  {
-    Kcp kcp = this.getKcp(addr,false);
-    kcp.send(bb);
-  }
-
-  /**
-   * update every tick
-   */
-  public void update()
-  {
-    kcpLock.lock();
-    try
-    {
-      for (Map.Entry<InetSocketAddress, Kcp> en : this.kcps.entrySet())
-      {
-        update(en.getKey(), en.getValue());
-      }
-    } finally
-    {
-      kcpLock.unlock();
-    }
-  }
-
-  /**
-   * update one kcp
-   *
-   * @param addr
-   * @param kcp
-   */
-  private void update(InetSocketAddress addr, Kcp kcp)
-  {
-    //input
-    dataLock.lock();
-    try
-    {
-      Queue<DatagramPacket> q = this.received.get(addr);
-      while (q != null && q.size() > 0)
-      {
-        DatagramPacket dp = q.remove();
-        kcp.input(dp.content());
-      }
-    } finally
-    {
-      dataLock.unlock();
-    }
-    //receive
-    int len;
-    while ((len = kcp.peekSize()) > 0)
-    {
-      ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(len);
-      int n = kcp.receive(bb);
-      if (n > 0)
-      {
-        this.handleReceive(bb, addr);
-      } else
-      {
-        bb.release();
-      }
-    }
-    //update kcp status
-    int cur = (int) System.currentTimeMillis();
-    if (kcp.isNeedUpdate() || cur >= kcp.getNextUpdate())
-    {
-      kcp.update(cur);
-      kcp.setNextUpdate(kcp.check(cur));
-      kcp.setNeedUpdate(false);
-    }
-  }
-
-  /**
-   * kcp message
-   *
-   * @param bb the data 
-   * @param addr the sender
-   */
-  protected abstract void handleReceive(ByteBuf bb, InetSocketAddress addr);
+  private final Kcp kcp;//kcp的状态
+  private final Queue<ByteBuf> received;//输入
+  private final Queue<ByteBuf> sendList;
+  private long timeout;//超时设定
+  private long lastTime;//上次超时检查时间
+  private final KcpListerner listerner;
+  private volatile boolean needUpdate;
+  private volatile boolean closed;
 
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
@@ -233,10 +41,7 @@ public abstract class KcpOnUdp implements Output
    */
   public void noDelay(int nodelay, int interval, int resend, int nc)
   {
-    this.nodelay = nodelay;
-    this.interval = interval;
-    this.resend = resend;
-    this.nc = nc;
+    this.kcp.noDelay(nodelay, interval, resend, nc);
   }
 
   /**
@@ -247,8 +52,7 @@ public abstract class KcpOnUdp implements Output
    */
   public void wndSize(int sndwnd, int rcvwnd)
   {
-    this.sndwnd = sndwnd;
-    this.rcvwnd = rcvwnd;
+    this.kcp.wndSize(sndwnd, rcvwnd);
   }
 
   /**
@@ -258,57 +62,115 @@ public abstract class KcpOnUdp implements Output
    */
   public void setMtu(int mtu)
   {
-    this.mtu = mtu;
+    this.kcp.setMtu(mtu);
   }
 
   /**
-   * receive DatagramPacket
+   * kcp for udp
    *
-   * @param dp
+   * @param out
+   * @param user
+   * @param listerner
    */
-  private void onReceive(DatagramPacket dp)
+  public KcpOnUdp(Output out, Object user, KcpListerner listerner)
   {
-    this.dataLock.lock();
-    try
+    this.listerner = listerner;
+    kcp = new Kcp(121106, out, user);
+    received = new LinkedList<>();
+    sendList = new LinkedBlockingQueue<>();
+  }
+
+  /**
+   * send data to addr
+   *
+   * @param bb
+   */
+  public void send(ByteBuf bb)
+  {
+    this.sendList.add(bb);
+    this.needUpdate = true;
+  }
+
+  /**
+   * update one kcp
+   *
+   * @param addr
+   * @param kcp
+   */
+  void update()
+  {
+    //send
+    while (!this.sendList.isEmpty())
     {
-      Queue<DatagramPacket> q = this.received.get(dp.sender());
-      if (q == null)
+      ByteBuf bb = sendList.remove();
+      this.kcp.send(bb);
+    }
+    //input
+    while (!this.received.isEmpty())
+    {
+      ByteBuf dp = this.received.remove();
+      kcp.input(dp);
+    }
+    //receive
+    int len;
+    while ((len = kcp.peekSize()) > 0)
+    {
+      ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(len);
+      int n = kcp.receive(bb);
+      if (n > 0)
       {
-        q = new LinkedList<>();
-        received.put(dp.sender(), q);
+        this.lastTime = System.currentTimeMillis();
+        this.listerner.handleReceive(bb, this);
+      } else
+      {
+        bb.release();
       }
-      if(dp.content().readableBytes()>0)
-      {
-        q.add(dp);
-      }else//新链接
-      {
-        this.getKcp(dp.sender(), true);
-      }      
-    } finally
+    }
+    //update kcp status
+    int cur = (int) System.currentTimeMillis();
+    if (this.needUpdate || cur >= kcp.getNextUpdate())
     {
-      dataLock.unlock();
+      kcp.update(cur);
+      kcp.setNextUpdate(kcp.check(cur));
+      this.needUpdate = false;
+    }
+    //check timeout
+    if (this.timeout > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
+    {
+      this.closed = true;
+      this.listerner.handleClose(this);
     }
   }
 
   /**
-   * handler
+   * 输入 只会在worker线程调用,不会多线程调用
+   *
+   * @param content
    */
-  class UdpHandler extends ChannelInboundHandlerAdapter
+  void input(ByteBuf content)
   {
+    this.received.add(content);
+    this.needUpdate = true;
+  }
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
-    {
-      DatagramPacket dp = (DatagramPacket) msg;
-      System.out.println("udp received:"+dp);
-      KcpOnUdp.this.onReceive(dp);
-    }
+  public boolean isClosed()
+  {
+    return closed;
+  }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
-    {
-      LOG.error(cause.toString());
-    }
+  public Kcp getKcp()
+  {
+    return kcp;
+  }
+
+  public void setTimeout(long timeout)
+  {
+    this.timeout = timeout;
+  }
+
+  public long getTimeout()
+  {
+    return timeout;
   }
 
 }

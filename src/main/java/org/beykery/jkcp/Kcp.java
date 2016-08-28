@@ -81,7 +81,6 @@ public class Kcp
   private int logmask;
   private final Output output;
   private final Object user;
-  private boolean needUpdate;
   private int nextUpdate;//the next update time.
 
   private static int _ibound_(int lower, int middle, int upper)
@@ -318,7 +317,6 @@ public class Kcp
       seg.frg = count - i - 1;
       snd_queue.add(seg);
     }
-    needUpdate = true;
     return 0;
   }
 
@@ -608,7 +606,6 @@ public class Kcp
         }
       }
     }
-    needUpdate = true;
     return 0;
   }
 
@@ -1030,21 +1027,6 @@ public class Kcp
     return snd_buf.size() + snd_queue.size();
   }
 
-  /**
-   * update right now
-   *
-   * @return
-   */
-  public boolean isNeedUpdate()
-  {
-    return needUpdate;
-  }
-
-  public void setNeedUpdate(boolean needUpdate)
-  {
-    this.needUpdate = needUpdate;
-  }
-
   public void setNextUpdate(int nextUpdate)
   {
     this.nextUpdate = nextUpdate;
@@ -1053,6 +1035,11 @@ public class Kcp
   public int getNextUpdate()
   {
     return nextUpdate;
+  }
+
+  public Object getUser()
+  {
+    return user;
   }
 
 }
