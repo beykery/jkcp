@@ -141,6 +141,12 @@ public class KcpThread extends Thread
       {
         this.kcps.remove((InetSocketAddress) temp.getKcp().getUser());
       }
+      try
+      {
+        Thread.sleep(this.interval);
+      } catch (InterruptedException ex)
+      {
+      }
     }
   }
 
@@ -165,5 +171,4 @@ public class KcpThread extends Thread
     return timeout;
   }
 
-  
 }
