@@ -89,6 +89,7 @@ public abstract class KcpServer implements Output, KcpListerner
       for (int i = 0; i < this.workers.length; i++)
       {
         workers[i] = new KcpThread(this, this);
+        workers[i].setName("kcp thread " + i);
         workers[i].wndSize(sndwnd, rcvwnd);
         workers[i].noDelay(nodelay, interval, resend, nc);
         workers[i].setMtu(mtu);
