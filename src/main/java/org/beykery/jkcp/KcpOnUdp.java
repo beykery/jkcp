@@ -173,4 +173,10 @@ public class KcpOnUdp
     return timeout;
   }
 
+  @Override
+  public String toString()
+  {
+    return this.kcp.toString();
+  }
+
 }

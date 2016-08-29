@@ -1042,4 +1042,10 @@ public class Kcp
     return user;
   }
 
+  @Override
+  public String toString()
+  {
+    return this.user.toString();
+  }
+
 }

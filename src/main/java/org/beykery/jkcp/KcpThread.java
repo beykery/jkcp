@@ -28,6 +28,7 @@ public class KcpThread extends Thread
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
+  private long timeout;//idle
 
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
@@ -121,6 +122,7 @@ public class KcpThread extends Thread
           ku.noDelay(nodelay, interval, resend, nc);
           ku.wndSize(sndwnd, rcvwnd);
           ku.setMtu(mtu);
+          ku.setTimeout(timeout);
           this.kcps.put(dp.sender(), ku);
         }
         ku.input(dp.content());
@@ -153,4 +155,15 @@ public class KcpThread extends Thread
     this.inputs.add(dp);
   }
 
+  public void setTimeout(long timeout)
+  {
+    this.timeout = timeout;
+  }
+
+  public long getTimeout()
+  {
+    return timeout;
+  }
+
+  
 }

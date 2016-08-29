@@ -36,6 +36,7 @@ public abstract class KcpServer implements Output, KcpListerner
   private int mtu = Kcp.IKCP_MTU_DEF;
   private KcpThread[] workers;
   private boolean running;
+  private long timeout;
 
   /**
    * server
@@ -91,6 +92,7 @@ public abstract class KcpServer implements Output, KcpListerner
         workers[i].wndSize(sndwnd, rcvwnd);
         workers[i].noDelay(nodelay, interval, resend, nc);
         workers[i].setMtu(mtu);
+        workers[i].setTimeout(timeout);
         workers[i].start();
       }
     }
@@ -181,6 +183,16 @@ public abstract class KcpServer implements Output, KcpListerner
   public void setMtu(int mtu)
   {
     this.mtu = mtu;
+  }
+
+  public void setTimeout(long timeout)
+  {
+    this.timeout = timeout;
+  }
+
+  public long getTimeout()
+  {
+    return this.timeout;
   }
 
   /**
