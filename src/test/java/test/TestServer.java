@@ -47,7 +47,7 @@ public class TestServer extends KcpServer
    */
   public static void main(String[] args)
   {
-    TestServer s = new TestServer(2222, 3);
+    TestServer s = new TestServer(2222, 1);
     s.noDelay(1, 10, 2, 1);
     s.wndSize(64, 64);
     s.setTimeout(10 * 1000);

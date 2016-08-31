@@ -206,7 +206,11 @@ public abstract class KcpServer implements Output, KcpListerner
   {
     ku.send(bb);
   }
-
+  public void send(ByteBuf bb, InetSocketAddress addr)
+  {
+     DatagramPacket temp = new DatagramPacket(bb,  addr, this.addr);
+    this.channel.writeAndFlush(temp);
+  }
   /**
    * receive DatagramPacket
    *
