@@ -5,14 +5,9 @@ package org.beykery.jkcp;
 
 import io.netty.channel.socket.DatagramPacket;
 import java.net.InetSocketAddress;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -34,21 +29,7 @@ public class KcpThread extends Thread
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
   private long timeout;//idle
-  
-  
-  private Object wakeup = new Object();
-  public void threadNotify() {
-      synchronized(wakeup) {
-           this.wakeup.notify();
-      }
-  }
-  private Queue<KcpOnUdp> pqueue;
-  private Comparator<KcpOnUdp> cmp = new Comparator<KcpOnUdp>() { 
-      @Override
-      public int compare(KcpOnUdp e1, KcpOnUdp e2) { 
-        return (int) (e2.getTimeout() - e1.getTimeout()); 
-      } 
-    }; 
+
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
    * 1:enable interval: internal update timer interval in millisec, default is
@@ -102,7 +83,6 @@ public class KcpThread extends Thread
     this.listerner = listerner;
     inputs = new LinkedBlockingQueue<>();
     kcps = new HashMap<>();
-    pqueue = new PriorityQueue<>(10, cmp);
   }
 
   /**
@@ -144,45 +124,29 @@ public class KcpThread extends Thread
           ku.setMtu(mtu);
           ku.setTimeout(timeout);
           this.kcps.put(dp.sender(), ku);
-          pqueue.add(ku);
         }
         ku.input(dp.content());
       }
-      
-      //选出第一个kcp更新状态
-      KcpOnUdp first = pqueue.poll();
-      if(first != null && first.getTimeout() < System.currentTimeMillis()) {
-          first.update();
-          if(!first.isClosed()) {
-              pqueue.add(first);
-          } else {
-              this.kcps.remove((InetSocketAddress) first.getKcp().getUser());
-          }
-      }
-     
-      //每30s，更新一遍所有的kcp状态
-      if(System.currentTimeMillis()%(1000*30) == 0) {
-        //update
-        KcpOnUdp temp = null;
-        for (KcpOnUdp ku : this.kcps.values())
+      //update
+      KcpOnUdp temp = null;
+      for (KcpOnUdp ku : this.kcps.values())
+      {
+        ku.update();
+        if (ku.isClosed())
         {
-          ku.update();
-          if (ku.isClosed()) {//删掉过时的kcp
-            this.kcps.remove((InetSocketAddress) temp.getKcp().getUser());
-            pqueue.remove(ku);
-          }
+          temp = ku;
         }
       }
-      
-    //等待 
-    try {  
-        synchronized(wakeup){  
-          wakeup.wait(5*60*1000);
-        }
-    } catch (InterruptedException ex) {
-        Logger.getLogger(KcpThread.class.getName()).log(Level.SEVERE, null, ex);
-    }
-       
+      if (temp != null)//删掉过时的kcp
+      {
+        this.kcps.remove((InetSocketAddress) temp.getKcp().getUser());
+      }
+      try
+      {
+        Thread.sleep(this.interval);
+      } catch (InterruptedException ex)
+      {
+      }
     }
   }
 
@@ -195,7 +159,6 @@ public class KcpThread extends Thread
   void input(DatagramPacket dp)
   {
     this.inputs.add(dp);
-    this.threadNotify();
   }
 
   public void setTimeout(long timeout)

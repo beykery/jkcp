@@ -5,7 +5,9 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
@@ -27,6 +29,8 @@ public class KcpOnUdp
   private final KcpListerner listerner;
   private volatile boolean needUpdate;
   private volatile boolean closed;
+  private String sessionId;
+  private final Map<Object, Object> session;
 
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
@@ -78,6 +82,7 @@ public class KcpOnUdp
     kcp = new Kcp(121106, out, user);
     received = new LinkedList<>();
     sendList = new LinkedBlockingQueue<>();
+    this.session = new HashMap<>();
   }
 
   /**
@@ -179,4 +184,38 @@ public class KcpOnUdp
     return this.kcp.toString();
   }
 
+  public String getSessionId()
+  {
+    return sessionId;
+  }
+
+  public void setSessionId(String sessionId)
+  {
+    this.sessionId = sessionId;
+  }
+
+  public Map<Object, Object> getSessionMap()
+  {
+    return session;
+  }
+
+  public Object getSession(Object k)
+  {
+    return this.session.get(k);
+  }
+
+  public Object setSession(Object k, Object v)
+  {
+    return this.session.put(k, v);
+  }
+
+  public boolean containsSessionKey(Object k)
+  {
+    return this.session.containsKey(k);
+  }
+
+  public boolean containsSessionValue(Object v)
+  {
+    return this.session.containsValue(v);
+  }
 }

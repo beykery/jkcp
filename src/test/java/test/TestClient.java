@@ -7,7 +7,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
-import static org.beykery.jkcp.Kcp.IKCP_OVERHEAD;
 import org.beykery.jkcp.KcpOnUdp;
 import org.beykery.jkcp.KcpServer;
 
