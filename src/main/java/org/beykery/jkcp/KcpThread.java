@@ -7,6 +7,7 @@ import io.netty.channel.socket.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -82,7 +83,7 @@ public class KcpThread extends Thread
     this.out = out;
     this.listerner = listerner;
     inputs = new LinkedBlockingQueue<>();
-    kcps = new HashMap<>();
+    kcps = new ConcurrentHashMap<>();
   }
 
   /**
