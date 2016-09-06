@@ -18,7 +18,7 @@ public class KcpThread extends Thread
 
   private final Output out;
   private final LinkedBlockingQueue<DatagramPacket> inputs;
-  private boolean running;
+  private volatile boolean running;
   private final Map<InetSocketAddress, KcpOnUdp> kcps;
   private final KcpListerner listerner;
   private int nodelay;
