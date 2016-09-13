@@ -1,5 +1,5 @@
 /**
- * kcp服务器
+ * 测试
  */
 package org.beykery.jkcp;
 
@@ -14,17 +14,14 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import java.net.InetSocketAddress;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author beykery
  */
-public abstract class KcpServer implements Output, KcpListerner
+public abstract class KcpClient implements Output, KcpListerner, Runnable
 {
 
-  private static final Logger LOG = LoggerFactory.getLogger(KcpServer.class);
   private final NioDatagramChannel channel;
   private final InetSocketAddress addr;
   private int nodelay;
@@ -34,24 +31,21 @@ public abstract class KcpServer implements Output, KcpListerner
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
-  private KcpThread[] workers;
-  private boolean running;
   private long timeout;
+  private KcpOnUdp kcp;
+  private volatile boolean running;
+  private final Object waitLock = new Object();
+  private InetSocketAddress remote;
+  private NioEventLoopGroup nioEventLoopGroup;
 
   /**
-   * server
+   * 客户端
    *
    * @param port
-   * @param workerSize
    */
-  public KcpServer(int port, int workerSize)
+  public KcpClient(int port)
   {
-    if (port <= 0 || workerSize <= 0)
-    {
-      throw new IllegalArgumentException("参数非法");
-    }
-    this.workers = new KcpThread[workerSize];
-    final NioEventLoopGroup nioEventLoopGroup = new NioEventLoopGroup();
+    nioEventLoopGroup = new NioEventLoopGroup();
     Bootstrap bootstrap = new Bootstrap();
     bootstrap.channel(NioDatagramChannel.class);
     bootstrap.group(nioEventLoopGroup);
@@ -62,7 +56,21 @@ public abstract class KcpServer implements Output, KcpListerner
       protected void initChannel(NioDatagramChannel ch) throws Exception
       {
         ChannelPipeline cp = ch.pipeline();
-        cp.addLast(new KcpServer.UdpHandler());
+        cp.addLast(new ChannelInboundHandlerAdapter()
+        {
+          @Override
+          public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
+          {
+            DatagramPacket dp = (DatagramPacket) msg;
+            KcpClient.this.onReceive(dp);
+          }
+
+          @Override
+          public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
+          {
+            KcpClient.this.handleException(cause);
+          }
+        });
       }
     });
     ChannelFuture sync = bootstrap.bind(port).syncUninterruptibly();
@@ -76,74 +84,6 @@ public abstract class KcpServer implements Output, KcpListerner
         nioEventLoopGroup.shutdownGracefully();
       }
     }));
-  }
-
-  /**
-   * 开始
-   */
-  public void start()
-  {
-    if (!this.running)
-    {
-      this.running = true;
-      for (int i = 0; i < this.workers.length; i++)
-      {
-        workers[i] = new KcpThread(this, this);
-        workers[i].setName("kcp thread " + i);
-        workers[i].wndSize(sndwnd, rcvwnd);
-        workers[i].noDelay(nodelay, interval, resend, nc);
-        workers[i].setMtu(mtu);
-        workers[i].setTimeout(timeout);
-        workers[i].start();
-      }
-    }
-  }
-
-  /**
-   * close
-   *
-   * @return
-   */
-  public ChannelFuture close()
-  {
-    if (this.running)
-    {
-      this.running = false;
-      for (KcpThread kt : this.workers)
-      {
-        kt.close();
-      }
-      this.workers = null;
-      return this.channel.close();
-    }
-    return null;
-  }
-
-  /**
-   * 连接 一旦连接上一个默认地址,则不会再收取其它地址的信息
-   *
-   * @param addr
-   */
-  public void connect(InetSocketAddress addr)
-  {
-    if (!this.running)
-    {
-      this.channel.connect(addr);
-    }
-  }
-
-  /**
-   * kcp call
-   *
-   * @param msg
-   * @param kcp
-   * @param user
-   */
-  @Override
-  public void out(ByteBuf msg, Kcp kcp, Object user)
-  {
-    DatagramPacket temp = new DatagramPacket(msg, (InetSocketAddress) user, this.addr);
-    this.channel.writeAndFlush(temp);
   }
 
   /**
@@ -198,45 +138,120 @@ public abstract class KcpServer implements Output, KcpListerner
   }
 
   /**
-   * 发送
+   * 固定连接到一个服务器地址,只会处理此地址的消息
    *
-   * @param bb
-   * @param ku
+   * @param addr
    */
-  public void send(ByteBuf bb, KcpOnUdp ku)
+  public void connect(InetSocketAddress addr)
   {
-    ku.send(bb);
+    this.remote = addr;
+    this.channel.connect(addr);
+  }
+
+  @Override
+  public void out(ByteBuf msg, Kcp kcp, Object user)
+  {
+    DatagramPacket temp = new DatagramPacket(msg, (InetSocketAddress) user, this.addr);
+    this.channel.writeAndFlush(temp);
   }
 
   /**
-   * receive DatagramPacket
+   * 收到服务器消息
    *
    * @param dp
    */
   private void onReceive(DatagramPacket dp)
   {
-    InetSocketAddress sender = dp.sender();
-    int hash = sender.hashCode();
-    this.workers[hash % workers.length].input(dp);
+    if (this.kcp != null)
+    {
+      this.kcp.input(dp.content());
+      synchronized (this.waitLock)
+      {
+        this.waitLock.notify();
+      }
+    }
   }
 
   /**
-   * handler
+   * 关掉
+   *
    */
-  public class UdpHandler extends ChannelInboundHandlerAdapter
+  public void close()
   {
-
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
+    if (this.running)
     {
-      DatagramPacket dp = (DatagramPacket) msg;
-      KcpServer.this.onReceive(dp);
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
-    {
-      KcpServer.this.handleException(cause);
+      this.running = false;
     }
   }
+
+  /**
+   * 发送消息
+   *
+   * @param bb
+   */
+  public void send(ByteBuf bb)
+  {
+    if (this.kcp != null)
+    {
+      this.kcp.send(bb);
+      synchronized (this.waitLock)
+      {
+        this.waitLock.notify();
+      }
+    }
+  }
+
+  /**
+   * 开启线程处理kcp状态
+   */
+  public void start()
+  {
+    if (!this.running)
+    {
+      this.running = true;
+      this.kcp = new KcpOnUdp(this, remote, this);
+      this.kcp.noDelay(nodelay, interval, resend, nc);
+      this.kcp.wndSize(sndwnd, rcvwnd);
+      this.kcp.setTimeout(timeout);
+      Thread t = new Thread(this);
+      t.setName("kcp client thread");
+      t.start();
+    }
+  }
+
+  @Override
+  public void run()
+  {
+    while (running)
+    {
+      if (this.kcp.isClosed())
+      {
+        this.running = false;
+        continue;
+      }
+      long st = System.currentTimeMillis();
+      this.kcp.update();
+      if (this.kcp.needUpdate())
+      {
+        continue;
+      }
+      long end = System.currentTimeMillis();
+      while ((end - st) < this.interval)
+      {
+        synchronized (waitLock)
+        {
+          try
+          {
+            waitLock.wait(this.interval - end + st);
+          } catch (Exception ex)
+          {
+          }
+        }
+        break;
+      }
+    }
+    nioEventLoopGroup.shutdownGracefully();
+    this.channel.close();
+  }
+
 }

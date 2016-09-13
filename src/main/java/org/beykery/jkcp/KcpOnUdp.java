@@ -6,7 +6,6 @@ package org.beykery.jkcp;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -80,7 +79,7 @@ public class KcpOnUdp
   {
     this.listerner = listerner;
     kcp = new Kcp(121106, out, user);
-    received = new LinkedList<>();
+    received = new LinkedBlockingQueue<>();
     sendList = new LinkedBlockingQueue<>();
     this.session = new HashMap<>();
   }
@@ -140,7 +139,7 @@ public class KcpOnUdp
       this.needUpdate = false;
     }
     //check timeout
-    if (this.timeout > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
+    if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
     {
       this.closed = true;
       this.listerner.handleClose(this);
@@ -217,5 +216,10 @@ public class KcpOnUdp
   public boolean containsSessionValue(Object v)
   {
     return this.session.containsValue(v);
+  }
+
+  boolean needUpdate()
+  {
+    return this.needUpdate;
   }
 }

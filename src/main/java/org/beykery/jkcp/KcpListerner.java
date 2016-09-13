@@ -4,7 +4,6 @@
 package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
-import java.net.InetSocketAddress;
 
 /**
  *

@@ -111,6 +111,7 @@ public class KcpThread extends Thread
   {
     while (this.running)
     {
+      long st = System.currentTimeMillis();
       //input
       while (!this.inputs.isEmpty())
       {
@@ -141,11 +142,15 @@ public class KcpThread extends Thread
       {
         this.kcps.remove((InetSocketAddress) temp.getKcp().getUser());
       }
-      try
+      long end = System.currentTimeMillis();
+      if (end - st < this.interval)
       {
-        Thread.sleep(this.interval);
-      } catch (InterruptedException ex)
-      {
+        try
+        {
+          Thread.sleep(this.interval - end + st);
+        } catch (InterruptedException ex)
+        {
+        }
       }
     }
   }
