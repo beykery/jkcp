@@ -123,8 +123,8 @@ public class KcpOnUdp
       int n = kcp.receive(bb);
       if (n > 0)
       {
-        this.lastTime = System.currentTimeMillis();
         this.listerner.handleReceive(bb, this);
+        this.lastTime = System.currentTimeMillis();
       } else
       {
         bb.release();

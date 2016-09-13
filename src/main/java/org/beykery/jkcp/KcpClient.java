@@ -229,25 +229,20 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
         this.running = false;
         continue;
       }
-      long st = System.currentTimeMillis();
       this.kcp.update();
       if (this.kcp.needUpdate())
       {
         continue;
       }
-      long end = System.currentTimeMillis();
-      while ((end - st) < this.interval)
+      synchronized (waitLock)
       {
-        synchronized (waitLock)
+        try
         {
-          try
-          {
-            waitLock.wait(this.interval - end + st);
-          } catch (Exception ex)
-          {
-          }
+          waitLock.wait(this.interval);
+        } catch (Exception ex)
+        {
+          System.out.println("error..........");
         }
-        break;
       }
     }
     nioEventLoopGroup.shutdownGracefully();
