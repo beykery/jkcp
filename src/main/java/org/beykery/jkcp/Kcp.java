@@ -189,7 +189,7 @@ public class Kcp
     for (Segment item : rcv_queue)
     {
       length += item.data.readableBytes();
-      if (0 == item.frg)
+      if (item.frg == 0)
       {
         break;
       }
@@ -210,68 +210,64 @@ public class Kcp
       return -1;
     }
     int peekSize = peekSize();
-    if (0 > peekSize)
+    if (peekSize < 0)
     {
       return -2;
     }
-    if (peekSize > buffer.writableBytes())
-    {
-      return -3;
-    }
-    boolean fast_recover = false;
-    if (rcv_queue.size() >= rcv_wnd)
-    {
-      fast_recover = true;
-    }
+    boolean recover = rcv_queue.size() >= rcv_wnd;
     // merge fragment.
-    int count = 0;
-    int n = 0;
+    int c = 0;
+    int len = 0;
     for (Segment seg : rcv_queue)
     {
-      n += seg.data.readableBytes();
+      len += seg.data.readableBytes();
       buffer.writeBytes(seg.data);
-      count++;
+      c++;
       if (0 == seg.frg)
       {
         break;
       }
     }
-    if (0 < count)
+    if (c > 0)
     {
-      for (int i = 0; i < count; i++)
+      for (int i = 0; i < c; i++)
       {
         rcv_queue.removeFirst();
       }
     }
+    if (len != peekSize)
+    {
+      throw new RuntimeException("数据异常.");
+    }
     // move available data from rcv_buf -> rcv_queue
-    count = 0;
+    c = 0;
     for (Segment seg : rcv_buf)
     {
       if (seg.sn == rcv_nxt && rcv_queue.size() < rcv_wnd)
       {
         rcv_queue.add(seg);
         rcv_nxt++;
-        count++;
+        c++;
       } else
       {
         break;
       }
     }
-    if (0 < count)
+    if (c > 0)
     {
-      for (int i = 0; i < count; i++)
+      for (int i = 0; i < c; i++)
       {
         rcv_buf.removeFirst();
       }
     }
     // fast recover
-    if (rcv_queue.size() < rcv_wnd && fast_recover)
+    if (rcv_queue.size() < rcv_wnd && recover)
     {
       // ready to send back IKCP_CMD_WINS in ikcp_flush
       // tell remote my window size
       probe |= IKCP_ASK_TELL;
     }
-    return n;
+    return len;
   }
 
   /**
@@ -287,36 +283,31 @@ public class Kcp
       return -1;
     }
     int count;
-    if (buffer.readableBytes() < mss)
+    if (buffer.readableBytes() <= mss)
     {
       count = 1;
     } else
     {
       count = (buffer.readableBytes() + mss - 1) / mss;
     }
-    if (255 < count)
+    if (count > 255)
     {
       return -2;
     }
-    if (0 == count)
+    if (count == 0)
     {
       count = 1;
     }
+    //fragment
     for (int i = 0; i < count; i++)
     {
-      int size;
-      if (buffer.readableBytes() > mss)
-      {
-        size = mss;
-      } else
-      {
-        size = buffer.readableBytes();
-      }
+      int size = buffer.readableBytes() > mss ? mss : buffer.readableBytes();
       Segment seg = new Segment(size);
       seg.data.writeBytes(buffer, size);
       seg.frg = count - i - 1;
       snd_queue.add(seg);
     }
+    buffer.release();
     return 0;
   }
 
@@ -327,14 +318,14 @@ public class Kcp
    */
   private void update_ack(int rtt)
   {
-    if (0 == rx_srtt)
+    if (rx_srtt == 0)
     {
       rx_srtt = rtt;
       rx_rttval = rtt / 2;
     } else
     {
       int delta = rtt - rx_srtt;
-      if (0 > delta)
+      if (delta < 0)
       {
         delta = -delta;
       }
@@ -366,44 +357,67 @@ public class Kcp
     {
       return;
     }
-    int index = 0;
     for (int i = 0; i < snd_buf.size(); i++)
     {
       Segment seg = snd_buf.get(i);
       if (sn == seg.sn)
       {
-        snd_buf.remove(index);
+        snd_buf.remove(i);
         break;
-      } else
-      {
-        seg.fastack++;
       }
-      index++;
+      if (_itimediff(sn, seg.sn) < 0)
+      {
+        break;
+      }
     }
   }
 
   private void parse_una(int una)
   {
-    int count = 0;
+    int c = 0;
     for (Segment seg : snd_buf)
     {
       if (_itimediff(una, seg.sn) > 0)
       {
-        count++;
+        c++;
       } else
       {
         break;
       }
     }
-    if (0 < count)
+    if (c > 0)
     {
-      for (int i = 0; i < count; i++)
+      for (int i = 0; i < c; i++)
       {
         snd_buf.removeFirst();
       }
     }
   }
 
+  private void parse_fastack(int sn)
+  {
+    if (_itimediff(sn, snd_una) < 0 || _itimediff(sn, snd_nxt) >= 0)
+    {
+      return;
+    }
+    for (Segment seg : this.snd_buf)
+    {
+      if (_itimediff(sn, seg.sn) < 0)
+      {
+        break;
+      } else if (sn != seg.sn)
+      {
+        seg.fastack++;
+      }
+    }
+  }
+
+  /**
+   * ack append
+   *
+   * @param sn
+   * @param ts
+   */
   private void ack_push(int sn, int ts)
   {
     acklist.add(sn);
@@ -418,7 +432,7 @@ public class Kcp
       return;
     }
     int n = rcv_buf.size() - 1;
-    int after_idx = -1;
+    int temp = -1;
     boolean repeat = false;
     for (int i = n; i >= 0; i--)
     {
@@ -430,37 +444,37 @@ public class Kcp
       }
       if (_itimediff(sn, seg.sn) > 0)
       {
-        after_idx = i;
+        temp = i;
         break;
       }
     }
     if (!repeat)
     {
-      if (after_idx == -1)
+      if (temp == -1)
       {
         rcv_buf.addFirst(newseg);
       } else
       {
-        rcv_buf.add(after_idx + 1, newseg);
+        rcv_buf.add(temp + 1, newseg);
       }
     }
     // move available data from rcv_buf -> rcv_queue
-    int count = 0;
+    int c = 0;
     for (Segment seg : rcv_buf)
     {
       if (seg.sn == rcv_nxt && rcv_queue.size() < rcv_wnd)
       {
         rcv_queue.add(seg);
         rcv_nxt++;
-        count++;
+        c++;
       } else
       {
         break;
       }
     }
-    if (0 < count)
+    if (0 < c)
     {
-      for (int i = 0; i < count; i++)
+      for (int i = 0; i < c; i++)
       {
         rcv_buf.removeFirst();
       }
@@ -476,17 +490,17 @@ public class Kcp
    */
   public int input(ByteBuf data)
   {
-    int s_una = snd_una;
-    if (data==null||data.readableBytes() < IKCP_OVERHEAD)
+    int una_temp = snd_una;
+    int flag = 0, maxack = 0;
+    if (data == null || data.readableBytes() < IKCP_OVERHEAD)
     {
       return -1;
     }
-    int offset = 0;
     while (true)
     {
       int ts;
       int sn;
-      int length;
+      int len;
       int una;
       int conv_;
       int wnd;
@@ -497,26 +511,18 @@ public class Kcp
         break;
       }
       conv_ = data.readInt();
-      offset += 4;
-      if (conv != conv_)
+      if (this.conv != conv_)
       {
         return -1;
       }
       cmd = data.readByte();
-      offset += 1;
       frg = data.readByte();
-      offset += 1;
       wnd = data.readShort();
-      offset += 2;
       ts = data.readInt();
-      offset += 4;
       sn = data.readInt();
-      offset += 4;
       una = data.readInt();
-      offset += 4;
-      length = data.readInt();
-      offset += 4;
-      if (data.readableBytes() < length)
+      len = data.readInt();
+      if (data.readableBytes() < len)
       {
         return -2;
       }
@@ -542,6 +548,14 @@ public class Kcp
           }
           parse_ack(sn);
           shrink_buf();
+          if (flag == 0)
+          {
+            flag = 1;
+            maxack = sn;
+          } else if (_itimediff(sn, maxack) > 0)
+          {
+            maxack = sn;
+          }
           break;
         case IKCP_CMD_PUSH:
           if (_itimediff(sn, rcv_nxt + rcv_wnd) < 0)
@@ -549,7 +563,7 @@ public class Kcp
             ack_push(sn, ts);
             if (_itimediff(sn, rcv_nxt) >= 0)
             {
-              Segment seg = new Segment(length);
+              Segment seg = new Segment(len);
               seg.conv = conv_;
               seg.cmd = cmd;
               seg.frg = frg & 0x000000ff;
@@ -557,9 +571,9 @@ public class Kcp
               seg.ts = ts;
               seg.sn = sn;
               seg.una = una;
-              if (length > 0)
+              if (len > 0)
               {
-                seg.data.writeBytes(data, length);
+                seg.data.writeBytes(data, len);
               }
               parse_data(seg);
             }
@@ -570,39 +584,41 @@ public class Kcp
           // tell remote my window size
           probe |= IKCP_ASK_TELL;
           break;
-        // do nothing
         case IKCP_CMD_WINS:
+          // do nothing
           break;
         default:
           return -3;
       }
-      offset += length;
     }
-    if (_itimediff(snd_una, s_una) > 0)
+    if (flag != 0)
     {
-      if (cwnd < rmt_wnd)
+      parse_fastack(maxack);
+    }
+    if (_itimediff(snd_una, una_temp) > 0)
+    {
+      if (this.cwnd < this.rmt_wnd)
       {
-        int mss_ = mss;
-        if (cwnd < ssthresh)
+        if (this.cwnd < this.ssthresh)
         {
-          cwnd++;
-          incr += mss_;
+          this.cwnd++;
+          this.incr += mss;
         } else
         {
-          if (incr < mss_)
+          if (this.incr < mss)
           {
-            incr = mss_;
+            this.incr = mss;
           }
-          incr += (mss_ * mss_) / incr + (mss_ / 16);
-          if ((cwnd + 1) * mss_ <= incr)
+          this.incr += (mss * mss) / this.incr + (mss / 16);
+          if ((this.cwnd + 1) * mss <= this.incr)
           {
-            cwnd++;
+            this.cwnd++;
           }
         }
-        if (cwnd > rmt_wnd)
+        if (this.cwnd > this.rmt_wnd)
         {
-          cwnd = rmt_wnd;
-          incr = rmt_wnd * mss_;
+          this.cwnd = this.rmt_wnd;
+          this.incr = this.rmt_wnd * mss;
         }
       }
     }
@@ -626,7 +642,7 @@ public class Kcp
     int cur = current;
     int change = 0;
     int lost = 0;
-    if (0 == updated)
+    if (updated == 0)
     {
       return;
     }
@@ -636,25 +652,23 @@ public class Kcp
     seg.wnd = wnd_unused();
     seg.una = rcv_nxt;
     // flush acknowledges
-    int count = acklist.size() / 2;
-    int offset = 0;
-    for (int i = 0; i < count; i++)
+    int c = acklist.size() / 2;
+    for (int i = 0; i < c; i++)
     {
-      if (offset + IKCP_OVERHEAD > mtu)
+      if (buffer.readableBytes() + IKCP_OVERHEAD > mtu)
       {
         this.output.out(buffer, this, user);
-        offset = 0;
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
       }
       seg.sn = acklist.get(i * 2 + 0);
       seg.ts = acklist.get(i * 2 + 1);
-      offset += seg.encode(buffer);
+      seg.encode(buffer);
     }
     acklist.clear();
     // probe window size (if remote window size equals zero)
-    if (0 == rmt_wnd)
+    if (rmt_wnd == 0)
     {
-      if (0 == probe_wait)
+      if (probe_wait == 0)
       {
         probe_wait = IKCP_PROBE_INIT;
         ts_probe = current + probe_wait;
@@ -681,67 +695,67 @@ public class Kcp
     if ((probe & IKCP_ASK_SEND) != 0)
     {
       seg.cmd = IKCP_CMD_WASK;
-      if (offset + IKCP_OVERHEAD > mtu)
+      if (buffer.readableBytes() + IKCP_OVERHEAD > mtu)
       {
         this.output.out(buffer, this, user);
-        offset = 0;
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
       }
-      offset += seg.encode(buffer);
+      seg.encode(buffer);
+    }
+    // flush window probing commands
+    if ((probe & IKCP_ASK_TELL) != 0)
+    {
+      seg.cmd = IKCP_CMD_WINS;
+      if (buffer.readableBytes() + IKCP_OVERHEAD > mtu)
+      {
+        this.output.out(buffer, this, user);
+      }
+      seg.encode(buffer);
     }
     probe = 0;
     // calculate window size
-    int cwnd_ = Math.min(snd_wnd, rmt_wnd);
-    if (0 == nocwnd)
+    int cwnd_temp = Math.min(snd_wnd, rmt_wnd);
+    if (nocwnd == 0)
     {
-      cwnd_ = Math.min(cwnd, cwnd_);
+      cwnd_temp = Math.min(cwnd, cwnd_temp);
     }
-    count = 0;
-    for (Segment snd_queue1 : snd_queue)
+    // move data from snd_queue to snd_buf
+    c = 0;
+    for (Segment item : snd_queue)
     {
-      if (_itimediff(snd_nxt, snd_una + cwnd_) >= 0)
+      if (_itimediff(snd_nxt, snd_una + cwnd_temp) >= 0)
       {
         break;
       }
-      Segment newseg = snd_queue1;
+      Segment newseg = item;
       newseg.conv = conv;
       newseg.cmd = IKCP_CMD_PUSH;
       newseg.wnd = seg.wnd;
       newseg.ts = cur;
-      newseg.sn = snd_nxt;
+      newseg.sn = snd_nxt++;
       newseg.una = rcv_nxt;
       newseg.resendts = cur;
       newseg.rto = rx_rto;
       newseg.fastack = 0;
       newseg.xmit = 0;
       snd_buf.add(newseg);
-      snd_nxt++;
-      count++;
+      c++;
     }
-    if (0 < count)
+    if (c > 0)
     {
-      for (int i = 0; i < count; i++)
+      for (int i = 0; i < c; i++)
       {
         snd_queue.removeFirst();
       }
     }
     // calculate resent
-    int resent = fastresend;
-    if (fastresend <= 0)
-    {
-      resent = 0xffffffff;
-    }
-    int rtomin = rx_rto >> 3;
-    if (nodelay != 0)
-    {
-      rtomin = 0;
-    }
+    int resent = (fastresend > 0) ? fastresend : Integer.MAX_VALUE;
+    int rtomin = (nodelay == 0) ? (rx_rto >> 3) : 0;
     // flush data segments
     for (Segment segment : snd_buf)
     {
       boolean needsend = false;
-      //int debug = _itimediff(cur, segment.resendts);
-      if (0 == segment.xmit)
+      if (segment.xmit==0)
       {
         needsend = true;
         segment.xmit++;
@@ -752,7 +766,7 @@ public class Kcp
         needsend = true;
         segment.xmit++;
         xmit++;
-        if (0 == nodelay)
+        if (nodelay==0)
         {
           segment.rto += rx_rto;
         } else
@@ -775,26 +789,24 @@ public class Kcp
         segment.wnd = seg.wnd;
         segment.una = rcv_nxt;
         int need = IKCP_OVERHEAD + segment.data.readableBytes();
-        if (offset + need >= mtu)
+        if (buffer.readableBytes() + need > mtu)
         {
           this.output.out(buffer, this, user);
           buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-          offset = 0;
         }
-        offset += segment.encode(buffer);
+        segment.encode(buffer);
         if (segment.data.readableBytes() > 0)
         {
-          offset += segment.data.readableBytes();
           buffer.writeBytes(segment.data);
         }
         if (segment.xmit >= dead_link)
         {
-          state = 0;
+          state = -1;
         }
       }
     }
     // flash remain segments
-    if (offset > 0)
+    if (buffer.readableBytes() > 0)//失误!!!巨大的!!!!
     {
       this.output.out(buffer, this, user);
       buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
@@ -837,7 +849,7 @@ public class Kcp
   public void update(long current)
   {
     this.current = (int) current;
-    if (0 == updated)
+    if ( updated==0)
     {
       updated = 1;
       ts_flush = this.current;
@@ -873,7 +885,7 @@ public class Kcp
   public int check(long current)
   {
     int cur = (int) current;
-    if (0 == updated)
+    if (updated==0)
     {
       return cur;
     }

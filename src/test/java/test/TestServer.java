@@ -24,7 +24,7 @@ public class TestServer extends KcpServer
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
     String content = bb.toString(Charset.forName("utf-8"));
-    System.out.println("msg:" + content + " from " + kcp);
+    System.out.println("msg:" + content.length() + " from " + kcp);
     kcp.send(bb);
   }
 

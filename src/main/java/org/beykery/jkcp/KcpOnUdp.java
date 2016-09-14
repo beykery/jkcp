@@ -139,11 +139,11 @@ public class KcpOnUdp
       this.needUpdate = false;
     }
     //check timeout
-    if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
-    {
-      this.closed = true;
-      this.listerner.handleClose(this);
-    }
+//    if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
+//    {
+//      this.closed = true;
+//      this.listerner.handleClose(this);
+//    }
   }
 
   /**
