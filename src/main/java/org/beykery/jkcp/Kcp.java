@@ -652,6 +652,7 @@ public class Kcp
     seg.wnd = wnd_unused();
     seg.una = rcv_nxt;
     // flush acknowledges
+    boolean remain = false;
     int c = acklist.size() / 2;
     for (int i = 0; i < c; i++)
     {
@@ -663,6 +664,7 @@ public class Kcp
       seg.sn = acklist.get(i * 2 + 0);
       seg.ts = acklist.get(i * 2 + 1);
       seg.encode(buffer);
+      remain = true;
     }
     acklist.clear();
     // probe window size (if remote window size equals zero)
@@ -701,6 +703,7 @@ public class Kcp
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
       }
       seg.encode(buffer);
+      remain = true;
     }
     // flush window probing commands
     if ((probe & IKCP_ASK_TELL) != 0)
@@ -709,8 +712,10 @@ public class Kcp
       if (buffer.readableBytes() + IKCP_OVERHEAD > mtu)
       {
         this.output.out(buffer, this, user);
+        buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
       }
       seg.encode(buffer);
+      remain = true;
     }
     probe = 0;
     // calculate window size
@@ -755,7 +760,7 @@ public class Kcp
     for (Segment segment : snd_buf)
     {
       boolean needsend = false;
-      if (segment.xmit==0)
+      if (segment.xmit == 0)
       {
         needsend = true;
         segment.xmit++;
@@ -766,7 +771,7 @@ public class Kcp
         needsend = true;
         segment.xmit++;
         xmit++;
-        if (nodelay==0)
+        if (nodelay == 0)
         {
           segment.rto += rx_rto;
         } else
@@ -799,6 +804,7 @@ public class Kcp
         {
           buffer.writeBytes(segment.data);
         }
+        remain = true;
         if (segment.xmit >= dead_link)
         {
           state = -1;
@@ -806,7 +812,7 @@ public class Kcp
       }
     }
     // flash remain segments
-    if (buffer.readableBytes() > 0)//失误!!!巨大的!!!!
+    if (remain)//
     {
       this.output.out(buffer, this, user);
       buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
@@ -849,7 +855,7 @@ public class Kcp
   public void update(long current)
   {
     this.current = (int) current;
-    if ( updated==0)
+    if (updated == 0)
     {
       updated = 1;
       ts_flush = this.current;
@@ -885,7 +891,7 @@ public class Kcp
   public int check(long current)
   {
     int cur = (int) current;
-    if (updated==0)
+    if (updated == 0)
     {
       return cur;
     }

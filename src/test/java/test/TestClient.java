@@ -74,6 +74,7 @@ public class TestClient extends KcpClient
     tc.noDelay(1, 10, 2, 1);
     tc.wndSize(64, 64);
     tc.setTimeout(10 * 1000);
+    tc.setMtu(1000);
     tc.connect(new InetSocketAddress("119.29.153.92", 2222));
     //tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();

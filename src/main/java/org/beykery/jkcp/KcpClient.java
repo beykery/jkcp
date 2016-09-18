@@ -213,6 +213,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
       this.kcp.noDelay(nodelay, interval, resend, nc);
       this.kcp.wndSize(sndwnd, rcvwnd);
       this.kcp.setTimeout(timeout);
+      this.kcp.setMtu(mtu);
       Thread t = new Thread(this);
       t.setName("kcp client thread");
       t.start();
