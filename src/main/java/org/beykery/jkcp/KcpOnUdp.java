@@ -103,12 +103,6 @@ public class KcpOnUdp
    */
   void update()
   {
-    //send
-    while (!this.sendList.isEmpty())
-    {
-      ByteBuf bb = sendList.remove();
-      this.kcp.send(bb);
-    }
     //input
     while (!this.received.isEmpty())
     {
@@ -130,6 +124,12 @@ public class KcpOnUdp
         bb.release();
       }
     }
+    //send
+    while (!this.sendList.isEmpty())
+    {
+      ByteBuf bb = sendList.remove();
+      this.kcp.send(bb);
+    }
     //update kcp status
     int cur = (int) System.currentTimeMillis();
     if (this.needUpdate || cur >= kcp.getNextUpdate())
@@ -139,11 +139,11 @@ public class KcpOnUdp
       this.needUpdate = false;
     }
     //check timeout
-//    if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
-//    {
-//      this.closed = true;
-//      this.listerner.handleClose(this);
-//    }
+    if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
+    {
+      this.closed = true;
+      this.listerner.handleClose(this);
+    }
   }
 
   /**

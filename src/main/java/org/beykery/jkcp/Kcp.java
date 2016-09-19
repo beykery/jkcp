@@ -110,11 +110,14 @@ public class Kcp
     private int rto = 0;
     private int fastack = 0;
     private int xmit = 0;
-    private final ByteBuf data;
+    private ByteBuf data;
 
     private Segment(int size)
     {
-      this.data = PooledByteBufAllocator.DEFAULT.buffer(size);
+      if (size > 0)
+      {
+        this.data = PooledByteBufAllocator.DEFAULT.buffer(size);
+      }
     }
 
     /**
@@ -134,7 +137,7 @@ public class Kcp
       buf.writeInt(ts);
       buf.writeInt(sn);
       buf.writeInt(una);
-      buf.writeInt(data.readableBytes());
+      buf.writeInt(data == null ? 0 : data.readableBytes());
       return buf.writerIndex() - off;
     }
   }
@@ -232,7 +235,7 @@ public class Kcp
     {
       for (int i = 0; i < c; i++)
       {
-        rcv_queue.removeFirst();
+        rcv_queue.removeFirst().data.release();
       }
     }
     if (len != peekSize)
@@ -307,6 +310,7 @@ public class Kcp
       seg.frg = count - i - 1;
       snd_queue.add(seg);
     }
+    buffer.release();
     return 0;
   }
 
@@ -362,6 +366,7 @@ public class Kcp
       if (sn == seg.sn)
       {
         snd_buf.remove(i);
+        seg.data.release(seg.data.refCnt());
         break;
       }
       if (_itimediff(sn, seg.sn) < 0)
@@ -388,7 +393,8 @@ public class Kcp
     {
       for (int i = 0; i < c; i++)
       {
-        snd_buf.removeFirst();
+        Segment seg=snd_buf.removeFirst();
+        seg.data.release(seg.data.refCnt());
       }
     }
   }
@@ -651,7 +657,6 @@ public class Kcp
     seg.wnd = wnd_unused();
     seg.una = rcv_nxt;
     // flush acknowledges
-    boolean remain = false;
     int c = acklist.size() / 2;
     for (int i = 0; i < c; i++)
     {
@@ -663,7 +668,6 @@ public class Kcp
       seg.sn = acklist.get(i * 2 + 0);
       seg.ts = acklist.get(i * 2 + 1);
       seg.encode(buffer);
-      remain = true;
     }
     acklist.clear();
     // probe window size (if remote window size equals zero)
@@ -702,7 +706,6 @@ public class Kcp
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
       }
       seg.encode(buffer);
-      remain = true;
     }
     // flush window probing commands
     if ((probe & IKCP_ASK_TELL) != 0)
@@ -714,7 +717,6 @@ public class Kcp
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
       }
       seg.encode(buffer);
-      remain = true;
     }
     probe = 0;
     // calculate window size
@@ -801,9 +803,8 @@ public class Kcp
         segment.encode(buffer);
         if (segment.data.readableBytes() > 0)
         {
-          buffer.writeBytes(segment.data);
+          buffer.writeBytes(segment.data.duplicate());
         }
-        remain = true;
         if (segment.xmit >= dead_link)
         {
           state = -1;
@@ -811,7 +812,7 @@ public class Kcp
       }
     }
     // flash remain segments
-    if (remain)//
+    if (buffer.readableBytes() > 0)
     {
       this.output.out(buffer, this, user);
       buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
