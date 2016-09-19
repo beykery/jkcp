@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
+import org.beykery.jkcp.Kcp;
 import org.beykery.jkcp.KcpClient;
 import org.beykery.jkcp.KcpOnUdp;
 
@@ -28,12 +29,13 @@ public class TestClient extends KcpClient
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
     String content = bb.toString(Charset.forName("utf-8"));
-    System.out.println("msg:" + content + " from " + kcp);
-    int index=content.indexOf('a');
-    if(index<0)//失败,一半消息
+    //System.out.println("msg:" + content + " from " + kcp);
+    int index = content.indexOf('a');
+    if (index < 0)//失败,一半消息
     {
       System.out.println("error..........");
       bb.release();
+      System.out.println("msg:" + content + " from " + kcp);
       return;
     }
     int t = Integer.parseInt(content.substring(0, index));
@@ -42,8 +44,8 @@ public class TestClient extends KcpClient
       System.out.println("error!...............");
     }
     pre = t;
-    ByteBuf buf=PooledByteBufAllocator.DEFAULT.buffer(2048);
-    buf.writeBytes(String.valueOf(t+1).getBytes());
+    ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(2048);
+    buf.writeBytes(String.valueOf(t + 1).getBytes());
     buf.writeBytes(content.substring(index).getBytes());
     kcp.send(buf);
     bb.release();
@@ -63,19 +65,27 @@ public class TestClient extends KcpClient
     this.close();
   }
 
+  @Override
+  public void out(ByteBuf msg, Kcp kcp, Object user)
+  {
+    System.out.println("out:" + msg.readableBytes());
+    super.out(msg, kcp, user);
+  }
+
   /**
    * tcpdump udp port 2225 -x -vv -s0 -w 1112.pcap
    *
    * @param args
    */
-  public static void main(String[] args)
+  public static void main(String[] args) throws InterruptedException
   {
     TestClient tc = new TestClient(2225);
     tc.noDelay(1, 10, 2, 1);
-    tc.wndSize(64, 64);
+    tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);
-    tc.setMtu(1000);
-    tc.connect(new InetSocketAddress("119.29.153.92", 2222));
+    tc.setMtu(512);
+    //tc.connect(new InetSocketAddress("119.29.153.92", 2222));
+    tc.connect(new InetSocketAddress("10.18.121.26", 2222));
     //tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
     ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(1500);
@@ -89,6 +99,10 @@ public class TestClient extends KcpClient
     }
     sb.append('z');
     bb.writeBytes(sb.toString().getBytes());
-    tc.send(bb);
+   // while (true)
+    {
+      tc.send(bb);
+     // Thread.sleep(1000);
+    }
   }
 }

@@ -307,7 +307,6 @@ public class Kcp
       seg.frg = count - i - 1;
       snd_queue.add(seg);
     }
-    buffer.release();
     return 0;
   }
 
