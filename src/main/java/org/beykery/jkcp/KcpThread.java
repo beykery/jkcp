@@ -132,10 +132,12 @@ public class KcpThread extends Thread
       KcpOnUdp temp = null;
       for (KcpOnUdp ku : this.kcps.values())
       {
-        ku.update();
         if (ku.isClosed())
         {
           temp = ku;
+        } else
+        {
+          ku.update();
         }
       }
       if (temp != null)//删掉过时的kcp
@@ -153,6 +155,7 @@ public class KcpThread extends Thread
         }
       }
     }
+    release();
   }
 
   /**
@@ -163,7 +166,13 @@ public class KcpThread extends Thread
    */
   void input(DatagramPacket dp)
   {
-    this.inputs.add(dp);
+    if (this.running)
+    {
+      this.inputs.add(dp);
+    } else
+    {
+      dp.release();
+    }
   }
 
   public void setTimeout(long timeout)
@@ -174,6 +183,26 @@ public class KcpThread extends Thread
   public long getTimeout()
   {
     return timeout;
+  }
+
+  /**
+   * 释放所有内存
+   */
+  private void release()
+  {
+    for (DatagramPacket dp : this.inputs)
+    {
+      dp.release();
+    }
+    this.inputs.clear();
+    for (KcpOnUdp ku : this.kcps.values())
+    {
+      if (!ku.isClosed())
+      {
+        ku.release();
+      }
+    }
+    this.kcps.clear();
   }
 
 }

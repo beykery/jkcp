@@ -5,6 +5,7 @@ package test;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.util.ResourceLeakDetector;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import org.beykery.jkcp.Kcp;
@@ -60,15 +61,14 @@ public class TestClient extends KcpClient
   @Override
   public void handleClose(KcpOnUdp kcp)
   {
+    super.handleClose(kcp);
     System.out.println("服务器离开:" + kcp);
     System.out.println("waitSnd:" + kcp.getKcp().waitSnd());
-    this.close();
   }
 
   @Override
   public void out(ByteBuf msg, Kcp kcp, Object user)
   {
-    System.out.println("out:" + msg.readableBytes());
     super.out(msg, kcp, user);
   }
 
@@ -76,16 +76,18 @@ public class TestClient extends KcpClient
    * tcpdump udp port 2225 -x -vv -s0 -w 1112.pcap
    *
    * @param args
+   * @throws java.lang.InterruptedException
    */
   public static void main(String[] args) throws InterruptedException
   {
+    ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
     TestClient tc = new TestClient(2225);
     tc.noDelay(1, 10, 2, 1);
     tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
-    //tc.connect(new InetSocketAddress("119.29.153.92", 2222));
-    tc.connect(new InetSocketAddress("10.18.121.26", 2222));
+    tc.connect(new InetSocketAddress("119.29.153.92", 2222));
+    //tc.connect(new InetSocketAddress("10.18.121.26", 2222));
     //tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
     ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(1500);
@@ -99,10 +101,10 @@ public class TestClient extends KcpClient
     }
     sb.append('z');
     bb.writeBytes(sb.toString().getBytes());
-   // while (true)
+    // while (true)
     {
       tc.send(bb);
-     // Thread.sleep(1000);
+      // Thread.sleep(1000);
     }
   }
 }

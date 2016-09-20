@@ -91,8 +91,11 @@ public class KcpOnUdp
    */
   public void send(ByteBuf bb)
   {
-    this.sendList.add(bb);
-    this.needUpdate = true;
+    if (!closed)
+    {
+      this.sendList.add(bb);
+      this.needUpdate = true;
+    }
   }
 
   /**
@@ -108,6 +111,7 @@ public class KcpOnUdp
     {
       ByteBuf dp = this.received.remove();
       kcp.input(dp);
+      dp.release();
     }
     //receive
     int len;
@@ -142,19 +146,26 @@ public class KcpOnUdp
     if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - this.lastTime > this.timeout)
     {
       this.closed = true;
+      this.release();
       this.listerner.handleClose(this);
     }
   }
 
   /**
-   * 输入 只会在worker线程调用,不会多线程调用
+   * 输入
    *
    * @param content
    */
   void input(ByteBuf content)
   {
-    this.received.add(content);
-    this.needUpdate = true;
+    if (!this.closed)
+    {
+      this.received.add(content);
+      this.needUpdate = true;
+    } else
+    {
+      content.release();
+    }
   }
 
   public boolean isClosed()
@@ -221,5 +232,21 @@ public class KcpOnUdp
   boolean needUpdate()
   {
     return this.needUpdate;
+  }
+
+  /**
+   * 释放内存
+   */
+  void release()
+  {
+    this.kcp.release();
+    for (ByteBuf item : this.received)
+    {
+      item.release();
+    }
+    for (ByteBuf item : this.sendList)
+    {
+      item.release();
+    }
   }
 }

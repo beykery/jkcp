@@ -155,6 +155,12 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
     this.channel.writeAndFlush(temp);
   }
 
+  @Override
+  public void handleClose(KcpOnUdp kcp)
+  {
+    this.close();
+  }
+
   /**
    * 收到服务器消息
    *
@@ -162,13 +168,16 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
    */
   private void onReceive(DatagramPacket dp)
   {
-    if (this.kcp != null)
+    if (this.kcp != null && this.running)
     {
       this.kcp.input(dp.content());
       synchronized (this.waitLock)
       {
         this.waitLock.notify();
       }
+    } else
+    {
+      dp.release();
     }
   }
 
@@ -246,8 +255,17 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
         }
       }
     }
+    this.release();
     nioEventLoopGroup.shutdownGracefully();
     this.channel.close();
+  }
+
+  /**
+   * 释放内存
+   */
+  private void release()
+  {
+    this.kcp.release();
   }
 
 }

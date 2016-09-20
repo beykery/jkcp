@@ -35,7 +35,7 @@ public abstract class KcpServer implements Output, KcpListerner
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
   private KcpThread[] workers;
-  private boolean running;
+  private volatile boolean running;
   private long timeout;
 
   /**
@@ -215,9 +215,15 @@ public abstract class KcpServer implements Output, KcpListerner
    */
   private void onReceive(DatagramPacket dp)
   {
-    InetSocketAddress sender = dp.sender();
-    int hash = sender.hashCode();
-    this.workers[hash % workers.length].input(dp);
+    if (this.running)
+    {
+      InetSocketAddress sender = dp.sender();
+      int hash = sender.hashCode();
+      this.workers[hash % workers.length].input(dp);
+    } else
+    {
+      dp.release();
+    }
   }
 
   /**

@@ -52,7 +52,7 @@ public class TestServer extends KcpServer
     s.noDelay(1, 10, 2, 1);
     s.wndSize(64, 64);
     s.setTimeout(10 * 1000);
-    s.setMtu(1000);
+    s.setMtu(512);
     s.start();
   }
 }

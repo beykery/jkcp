@@ -140,6 +140,17 @@ public class Kcp
       buf.writeInt(data == null ? 0 : data.readableBytes());
       return buf.writerIndex() - off;
     }
+
+    /**
+     * 释放内存
+     */
+    private void release()
+    {
+      if (this.data != null)
+      {
+        this.data.release(data.refCnt());
+      }
+    }
   }
 
   /**
@@ -393,7 +404,7 @@ public class Kcp
     {
       for (int i = 0; i < c; i++)
       {
-        Segment seg=snd_buf.removeFirst();
+        Segment seg = snd_buf.removeFirst();
         seg.data.release(seg.data.refCnt());
       }
     }
@@ -434,6 +445,7 @@ public class Kcp
     int sn = newseg.sn;
     if (_itimediff(sn, rcv_nxt + rcv_wnd) >= 0 || _itimediff(sn, rcv_nxt) < 0)
     {
+      newseg.release();
       return;
     }
     int n = rcv_buf.size() - 1;
@@ -462,6 +474,9 @@ public class Kcp
       {
         rcv_buf.add(temp + 1, newseg);
       }
+    } else
+    {
+      newseg.release();
     }
     // move available data from rcv_buf -> rcv_queue
     int c = 0;
@@ -1066,4 +1081,27 @@ public class Kcp
     return this.user.toString();
   }
 
+  /**
+   * 释放内存
+   */
+  void release()
+  {
+    this.buffer.release();
+    for (Segment seg : this.rcv_buf)
+    {
+      seg.release();
+    }
+    for (Segment seg : this.rcv_queue)
+    {
+      seg.release();
+    }
+    for (Segment seg : this.snd_buf)
+    {
+      seg.release();
+    }
+    for (Segment seg : this.snd_queue)
+    {
+      seg.release();
+    }
+  }
 }
