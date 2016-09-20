@@ -191,7 +191,7 @@ public class Kcp
       return -1;
     }
     Segment seq = rcv_queue.getFirst();
-    if (0 == seq.frg)
+    if (seq.frg == 0)
     {
       return seq.data.readableBytes();
     }
@@ -237,7 +237,7 @@ public class Kcp
       len += seg.data.readableBytes();
       buffer.writeBytes(seg.data);
       c++;
-      if (0 == seg.frg)
+      if (seg.frg == 0)
       {
         break;
       }
@@ -292,7 +292,7 @@ public class Kcp
    */
   public int send(ByteBuf buffer)
   {
-    if (0 == buffer.readableBytes())
+    if (buffer.readableBytes()==0)
     {
       return -1;
     }
