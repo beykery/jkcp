@@ -82,7 +82,7 @@ public class TestClient extends KcpClient
   {
     ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
     TestClient tc = new TestClient(2225);
-    tc.noDelay(1, 10, 2, 1);
+    tc.noDelay(1, 20, 2, 1);
     tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);

@@ -292,7 +292,7 @@ public class Kcp
    */
   public int send(ByteBuf buffer)
   {
-    if (buffer.readableBytes()==0)
+    if (buffer.readableBytes() == 0)
     {
       return -1;
     }
@@ -518,6 +518,7 @@ public class Kcp
     }
     while (true)
     {
+      boolean readed = false;
       int ts;
       int sn;
       int len;
@@ -594,6 +595,7 @@ public class Kcp
               if (len > 0)
               {
                 seg.data.writeBytes(data, len);
+                readed = true;
               }
               parse_data(seg);
             }
@@ -609,6 +611,10 @@ public class Kcp
           break;
         default:
           return -3;
+      }
+      if (!readed)
+      {
+        data.skipBytes(len);
       }
     }
     if (flag != 0)
@@ -1086,7 +1092,10 @@ public class Kcp
    */
   void release()
   {
-    this.buffer.release();
+    if (buffer.refCnt() > 0)
+    {
+      this.buffer.release(buffer.refCnt());
+    }
     for (Segment seg : this.rcv_buf)
     {
       seg.release();
