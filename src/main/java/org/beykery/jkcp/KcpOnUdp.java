@@ -69,6 +69,36 @@ public class KcpOnUdp
   }
 
   /**
+   * stream模式
+   *
+   * @param stream
+   */
+  public void setStream(boolean stream)
+  {
+    this.kcp.setStream(stream);
+  }
+
+  /**
+   * 流模式
+   *
+   * @return
+   */
+  public boolean isStream()
+  {
+    return this.kcp.isStream();
+  }
+
+  /**
+   * rto设置
+   *
+   * @param rto
+   */
+  public void setMinRto(int rto)
+  {
+    this.kcp.setMinRto(rto);
+  }
+
+  /**
    * kcp for udp
    *
    * @param out

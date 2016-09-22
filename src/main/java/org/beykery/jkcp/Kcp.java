@@ -78,7 +78,7 @@ public class Kcp
   private ByteBuf buffer;
   private int fastresend;
   private int nocwnd;
-  private int logmask;
+  private boolean stream;
   private final Output output;
   private final Object user;
   private int nextUpdate;//the next update time.
@@ -296,6 +296,21 @@ public class Kcp
     {
       return -1;
     }
+    // append to previous segment in streaming mode (if possible)
+    if (this.stream && !this.snd_queue.isEmpty())
+    {
+      Segment seg = snd_queue.getLast();
+      if (seg.data != null && seg.data.readableBytes() < mss)
+      {
+        int capacity = mss - seg.data.readableBytes();
+        int extend = (buffer.readableBytes() < capacity) ? buffer.readableBytes() : capacity;
+        seg.data.writeBytes(buffer, extend);
+        if (buffer.readableBytes() == 0)
+        {
+          return 0;
+        }
+      }
+    }
     int count;
     if (buffer.readableBytes() <= mss)
     {
@@ -318,7 +333,7 @@ public class Kcp
       int size = buffer.readableBytes() > mss ? mss : buffer.readableBytes();
       Segment seg = new Segment(size);
       seg.data.writeBytes(buffer, size);
-      seg.frg = count - i - 1;
+      seg.frg = this.stream ? 0 : count - i - 1;
       snd_queue.add(seg);
     }
     buffer.release();
@@ -1079,6 +1094,21 @@ public class Kcp
   public Object getUser()
   {
     return user;
+  }
+
+  public boolean isStream()
+  {
+    return stream;
+  }
+
+  public void setStream(boolean stream)
+  {
+    this.stream = stream;
+  }
+
+  public void setMinRto(int min)
+  {
+    rx_minrto = min;
   }
 
   @Override

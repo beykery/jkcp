@@ -28,6 +28,8 @@ public class KcpThread extends Thread
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
+  private boolean stream;
+  private int minRto = Kcp.IKCP_RTO_MIN;
   private long timeout;//idle
 
   /**
@@ -123,6 +125,8 @@ public class KcpThread extends Thread
           ku.noDelay(nodelay, interval, resend, nc);
           ku.wndSize(sndwnd, rcvwnd);
           ku.setMtu(mtu);
+          ku.setMinRto(minRto);
+          ku.setStream(stream);
           ku.setTimeout(timeout);
           this.kcps.put(dp.sender(), ku);
         }
@@ -173,6 +177,27 @@ public class KcpThread extends Thread
     {
       dp.release();
     }
+  }
+
+  /**
+   * stream mode
+   *
+   *
+   * @param stream
+   */
+  public void setStream(boolean stream)
+  {
+    this.stream = stream;
+  }
+
+  public boolean isStream()
+  {
+    return stream;
+  }
+
+  public void setMinRto(int minRto)
+  {
+    this.minRto = minRto;
   }
 
   public void setTimeout(long timeout)
