@@ -31,6 +31,7 @@ public class KcpThread extends Thread
   private boolean stream;
   private int minRto = Kcp.IKCP_RTO_MIN;
   private long timeout;//idle
+  private final Object lock;//锁
 
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
@@ -85,6 +86,7 @@ public class KcpThread extends Thread
     this.listerner = listerner;
     inputs = new LinkedBlockingQueue<>();
     kcps = new HashMap<>();
+    this.lock = new Object();
   }
 
   /**
@@ -148,14 +150,20 @@ public class KcpThread extends Thread
       {
         this.kcps.remove((InetSocketAddress) temp.getKcp().getUser());
       }
-      long end = System.currentTimeMillis();
-      if (end - st < this.interval)
+      if (inputs.isEmpty())//如果输入为空则考虑wait
       {
-        try
+        long end = System.currentTimeMillis();
+        if (end - st < this.interval)
         {
-          Thread.sleep(this.interval - end + st);
-        } catch (InterruptedException ex)
-        {
+          synchronized (this.lock)
+          {
+            try
+            {
+              lock.wait(interval - end + st);
+            } catch (Exception e)
+            {
+            }
+          }
         }
       }
     }
@@ -173,6 +181,10 @@ public class KcpThread extends Thread
     if (this.running)
     {
       this.inputs.add(dp);
+      synchronized (this.lock)
+      {
+        lock.notify();
+      }
     } else
     {
       dp.release();
