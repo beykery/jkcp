@@ -160,7 +160,7 @@ public class KcpThread extends Thread
             try
             {
               lock.wait(interval - end + st);
-            } catch (Exception e)
+            } catch (InterruptedException e)
             {
             }
           }

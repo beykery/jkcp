@@ -70,7 +70,8 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
           @Override
           public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
           {
-            KcpClient.this.handleException(cause);
+            KcpClient.this.handleException(cause, null);
+            KcpClient.this.close();
           }
         });
       }
@@ -257,8 +258,10 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
   @Override
   public void run()
   {
+    long start, end;
     while (running)
     {
+      start = System.currentTimeMillis();
       if (this.kcp.isClosed())
       {
         this.running = false;
@@ -269,14 +272,17 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
       {
         continue;
       }
-      synchronized (waitLock)
+      end = System.currentTimeMillis();
+      if (end - start < interval)
       {
-        try
+        synchronized (waitLock)
         {
-          waitLock.wait(this.interval);
-        } catch (Exception ex)
-        {
-          System.out.println("error..........");
+          try
+          {
+            waitLock.wait(this.interval - end + start);
+          } catch (InterruptedException ex)
+          {
+          }
         }
       }
     }

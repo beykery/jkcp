@@ -29,9 +29,9 @@ public class TestServer extends KcpServer
   }
 
   @Override
-  public void handleException(Throwable ex)
+  public void handleException(Throwable ex, KcpOnUdp kcp)
   {
-    System.out.println(ex.fillInStackTrace());
+    System.out.println(ex);
   }
 
   @Override

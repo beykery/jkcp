@@ -24,9 +24,10 @@ public interface KcpListerner
    *
    * 异常
    *
-   * @param ex
+   * @param ex 异常
+   * @param kcp 发生异常的kcp，null表示非kcp错误
    */
-  public void handleException(Throwable ex);
+  public void handleException(Throwable ex, KcpOnUdp kcp);
 
   /**
    * 关闭

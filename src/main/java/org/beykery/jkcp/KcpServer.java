@@ -267,7 +267,7 @@ public abstract class KcpServer implements Output, KcpListerner
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
     {
-      KcpServer.this.handleException(cause);
+      KcpServer.this.handleException(cause, null);
     }
   }
 }

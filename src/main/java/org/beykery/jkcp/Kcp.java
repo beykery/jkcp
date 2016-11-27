@@ -78,9 +78,9 @@ public class Kcp
   private ByteBuf buffer;
   private int fastresend;
   private int nocwnd;
-  private boolean stream;
+  private boolean stream;//流模式
   private final Output output;
-  private final Object user;
+  private final Object user;//远端地址
   private int nextUpdate;//the next update time.
 
   private static int _ibound_(int lower, int middle, int upper)

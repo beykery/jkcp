@@ -25,6 +25,7 @@ public class KcpOnUdp
   private final Queue<ByteBuf> sendList;
   private long timeout;//超时设定
   private long lastTime;//上次超时检查时间
+  private int errcode;//错误代码
   private final KcpListerner listerner;
   private volatile boolean needUpdate;
   private volatile boolean closed;
@@ -140,8 +141,16 @@ public class KcpOnUdp
     while (!this.received.isEmpty())
     {
       ByteBuf dp = this.received.remove();
-      kcp.input(dp);
+      errcode = kcp.input(dp);
       dp.release();
+      if (errcode != 0)
+      {
+        this.closed = true;
+        this.release();
+        this.listerner.handleException(new IllegalStateException("input error : " + errcode), this);
+        this.listerner.handleClose(this);
+        return;
+      }
     }
     //receive
     int len;
@@ -162,7 +171,15 @@ public class KcpOnUdp
     while (!this.sendList.isEmpty())
     {
       ByteBuf bb = sendList.remove();
-      this.kcp.send(bb);
+      errcode = this.kcp.send(bb);
+      if (errcode != 0)
+      {
+        this.closed = true;
+        this.release();
+        this.listerner.handleException(new IllegalStateException("send error : " + errcode), this);
+        this.listerner.handleClose(this);
+        return;
+      }
     }
     //update kcp status
     int cur = (int) System.currentTimeMillis();
@@ -224,41 +241,86 @@ public class KcpOnUdp
     return this.kcp.toString();
   }
 
+  /**
+   * session id
+   *
+   * @return
+   */
   public String getSessionId()
   {
     return sessionId;
   }
 
+  /**
+   * session id
+   *
+   * @param sessionId
+   */
   public void setSessionId(String sessionId)
   {
     this.sessionId = sessionId;
   }
 
+  /**
+   * session map
+   *
+   * @return
+   */
   public Map<Object, Object> getSessionMap()
   {
     return session;
   }
 
+  /**
+   * session k v
+   *
+   * @param k
+   * @return
+   */
   public Object getSession(Object k)
   {
     return this.session.get(k);
   }
 
+  /**
+   * session k v
+   *
+   * @param k
+   * @param v
+   * @return
+   */
   public Object setSession(Object k, Object v)
   {
     return this.session.put(k, v);
   }
 
+  /**
+   * contains key
+   *
+   * @param k
+   * @return
+   */
   public boolean containsSessionKey(Object k)
   {
     return this.session.containsKey(k);
   }
 
+  /**
+   * contains value
+   *
+   * @param v
+   * @return
+   */
   public boolean containsSessionValue(Object v)
   {
     return this.session.containsValue(v);
   }
 
+  /**
+   * 立即更新？
+   *
+   * @return
+   */
   boolean needUpdate()
   {
     return this.needUpdate;
