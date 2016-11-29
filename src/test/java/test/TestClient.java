@@ -24,30 +24,13 @@ public class TestClient extends KcpClient
     super(port);
   }
 
-  int pre = -1;
-
   @Override
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
     String content = bb.toString(Charset.forName("utf-8"));
-    //System.out.println("msg:" + content + " from " + kcp);
-    int index = content.indexOf('a');
-    if (index < 0)//失败,一半消息
-    {
-      System.out.println("error..........");
-      bb.release();
-      System.out.println("msg:" + content + " from " + kcp);
-      return;
-    }
-    int t = Integer.parseInt(content.substring(0, index));
-    if (t != pre + 1)
-    {
-      System.out.println("error!...............");
-    }
-    pre = t;
+    System.out.println(content);
     ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(2048);
-    buf.writeBytes(String.valueOf(t + 1).getBytes());
-    buf.writeBytes(content.substring(index).getBytes());
+    buf.writeBytes(content.getBytes(Charset.forName("utf-8")));
     kcp.send(buf);
     bb.release();
   }
@@ -86,25 +69,11 @@ public class TestClient extends KcpClient
     tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
-    tc.connect(new InetSocketAddress("119.29.153.92", 2222));
-    //tc.connect(new InetSocketAddress("10.18.121.26", 2222));
-    //tc.connect(new InetSocketAddress("localhost", 2222));
+    tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
+    String content = "sdfkasd你好。。。。。。。";
     ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(1500);
-    bb.writeBytes(String.valueOf(0).getBytes());
-    int len = 1500;
-    StringBuilder sb = new StringBuilder();
-    sb.append('a');
-    for (int i = 0; i < len - 2 - 4; i++)
-    {
-      sb.append('c');
-    }
-    sb.append('z');
-    bb.writeBytes(sb.toString().getBytes());
-    // while (true)
-    {
-      tc.send(bb);
-      // Thread.sleep(1000);
-    }
+    bb.writeBytes(content.getBytes(Charset.forName("utf-8")));
+    tc.send(bb);
   }
 }
