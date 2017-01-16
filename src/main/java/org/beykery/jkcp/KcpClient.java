@@ -31,6 +31,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
+  private int conv = 121106;
   private boolean stream;
   private int minRto = Kcp.IKCP_RTO_MIN;
   private long timeout;
@@ -128,6 +129,16 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
   public void setMtu(int mtu)
   {
     this.mtu = mtu;
+  }
+
+  /**
+   * conv
+   *
+   * @param conv
+   */
+  public void setConv(int conv)
+  {
+    this.conv = conv;
   }
 
   /**
@@ -247,6 +258,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
       this.kcp.wndSize(sndwnd, rcvwnd);
       this.kcp.setTimeout(timeout);
       this.kcp.setMtu(mtu);
+      this.kcp.setConv(conv);
       this.kcp.setStream(stream);
       this.kcp.setMinRto(minRto);
       Thread t = new Thread(this);

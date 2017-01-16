@@ -70,6 +70,16 @@ public class KcpOnUdp
   }
 
   /**
+   * conv
+   *
+   * @param conv
+   */
+  public void setConv(int conv)
+  {
+    this.kcp.setConv(conv);
+  }
+
+  /**
    * stream模式
    *
    * @param stream

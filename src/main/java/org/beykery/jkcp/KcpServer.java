@@ -34,6 +34,7 @@ public abstract class KcpServer implements Output, KcpListerner
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
+  private int conv = 121106;
   private boolean stream;
   private int minRto = Kcp.IKCP_RTO_MIN;
   private KcpThread[] workers;
@@ -95,6 +96,7 @@ public abstract class KcpServer implements Output, KcpListerner
         workers[i].wndSize(sndwnd, rcvwnd);
         workers[i].noDelay(nodelay, interval, resend, nc);
         workers[i].setMtu(mtu);
+        workers[i].setConv(conv);
         workers[i].setTimeout(timeout);
         workers[i].setMinRto(minRto);
         workers[i].setStream(stream);
@@ -189,6 +191,16 @@ public abstract class KcpServer implements Output, KcpListerner
   public void setMtu(int mtu)
   {
     this.mtu = mtu;
+  }
+
+  /**
+   * conv
+   *
+   * @param conv
+   */
+  public void setConv(int conv)
+  {
+    this.conv = conv;
   }
 
   /**

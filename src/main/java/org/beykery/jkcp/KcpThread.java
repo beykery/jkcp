@@ -28,6 +28,7 @@ public class KcpThread extends Thread
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
+  private int conv = 121106;
   private boolean stream;
   private int minRto = Kcp.IKCP_RTO_MIN;
   private long timeout;//idle
@@ -72,6 +73,16 @@ public class KcpThread extends Thread
   public void setMtu(int mtu)
   {
     this.mtu = mtu;
+  }
+
+  /**
+   * conv
+   *
+   * @param conv
+   */
+  public void setConv(int conv)
+  {
+    this.conv = conv;
   }
 
   /**
@@ -127,6 +138,7 @@ public class KcpThread extends Thread
           ku.noDelay(nodelay, interval, resend, nc);
           ku.wndSize(sndwnd, rcvwnd);
           ku.setMtu(mtu);
+          ku.setConv(conv);
           ku.setMinRto(minRto);
           ku.setStream(stream);
           ku.setTimeout(timeout);

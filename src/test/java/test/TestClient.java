@@ -69,6 +69,7 @@ public class TestClient extends KcpClient
     tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
+    tc.setConv(121106);
     tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
     String content = "sdfkasd你好。。。。。。。";

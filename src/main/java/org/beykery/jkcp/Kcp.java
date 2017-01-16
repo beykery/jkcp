@@ -41,7 +41,7 @@ public class Kcp
   public static final int IKCP_PROBE_INIT = 7000;   // 7 secs to probe window size
   public static final int IKCP_PROBE_LIMIT = 120000; // up to 120 secs to probe window
 
-  private final int conv;
+  private int conv;
   private int mtu;
   private int mss;
   private int state;
@@ -983,6 +983,16 @@ public class Kcp
     }
     this.buffer = buf;
     return 0;
+  }
+
+  /**
+   * conv
+   *
+   * @param conv
+   */
+  public void setConv(int conv)
+  {
+    this.conv = conv;
   }
 
   /**
