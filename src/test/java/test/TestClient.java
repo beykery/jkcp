@@ -20,11 +20,6 @@ import org.beykery.jkcp.KcpOnUdp;
 public class TestClient extends KcpClient
 {
 
-  public TestClient(int port)
-  {
-    super(port);
-  }
-
   @Override
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
@@ -65,7 +60,7 @@ public class TestClient extends KcpClient
   public static void main(String[] args) throws InterruptedException
   {
     ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
-    TestClient tc = new TestClient(2225);
+    TestClient tc = new TestClient();
     tc.noDelay(1, 20, 2, 1);
     tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);

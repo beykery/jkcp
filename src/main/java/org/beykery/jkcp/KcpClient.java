@@ -44,6 +44,14 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
   private ByteOrder order;
 
   /**
+   * client
+   */
+  public KcpClient()
+  {
+    this(0);
+  }
+
+  /**
    * 客户端
    *
    * @param port
