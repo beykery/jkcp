@@ -178,7 +178,7 @@ public class Kcp
     ssthresh = IKCP_THRESH_INIT;
     dead_link = IKCP_DEADLINK;
     buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-    buffer.order(order);
+    buffer = buffer.order(order);
     this.output = output;
     this.user = user;
   }
@@ -984,7 +984,7 @@ public class Kcp
       return -1;
     }
     ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-    buf = buffer.order(order);
+    buf = buf.order(order);
     this.mtu = mtu;
     mss = mtu - IKCP_OVERHEAD;
     if (buffer != null)
