@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.util.ResourceLeakDetector;
 import java.net.InetSocketAddress;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import org.beykery.jkcp.Kcp;
 import org.beykery.jkcp.KcpClient;
@@ -70,6 +71,7 @@ public class TestClient extends KcpClient
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
     tc.setConv(121106);
+    tc.setOrder(ByteOrder.BIG_ENDIAN);
     tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
     String content = "sdfkasd你好。。。。。。。";

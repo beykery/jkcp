@@ -10,6 +10,7 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import java.nio.ByteOrder;
 import java.util.LinkedList;
 
 /**
@@ -82,6 +83,7 @@ public class Kcp
   private final Output output;
   private final Object user;//远端地址
   private int nextUpdate;//the next update time.
+  private ByteOrder order = ByteOrder.BIG_ENDIAN;
 
   private static int _ibound_(int lower, int middle, int upper)
   {
@@ -117,6 +119,7 @@ public class Kcp
       if (size > 0)
       {
         this.data = PooledByteBufAllocator.DEFAULT.buffer(size);
+        this.data = data.order(order);
       }
     }
 
@@ -175,6 +178,7 @@ public class Kcp
     ssthresh = IKCP_THRESH_INIT;
     dead_link = IKCP_DEADLINK;
     buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+    buffer.order(order);
     this.output = output;
     this.user = user;
   }
@@ -700,6 +704,7 @@ public class Kcp
       {
         this.output.out(buffer, this, user);
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+        buffer = buffer.order(order);
       }
       seg.sn = acklist.get(i * 2 + 0);
       seg.ts = acklist.get(i * 2 + 1);
@@ -740,6 +745,7 @@ public class Kcp
       {
         this.output.out(buffer, this, user);
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+        buffer = buffer.order(order);
       }
       seg.encode(buffer);
     }
@@ -751,6 +757,7 @@ public class Kcp
       {
         this.output.out(buffer, this, user);
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+        buffer = buffer.order(order);
       }
       seg.encode(buffer);
     }
@@ -835,6 +842,7 @@ public class Kcp
         {
           this.output.out(buffer, this, user);
           buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+          buffer = buffer.order(order);
         }
         segment.encode(buffer);
         if (segment.data.readableBytes() > 0)
@@ -852,6 +860,7 @@ public class Kcp
     {
       this.output.out(buffer, this, user);
       buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+      buffer = buffer.order(order);
     }
     // update ssthresh
     if (change != 0)
@@ -975,6 +984,7 @@ public class Kcp
       return -1;
     }
     ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+    buf = buffer.order(order);
     this.mtu = mtu;
     mss = mtu - IKCP_OVERHEAD;
     if (buffer != null)
@@ -1119,6 +1129,16 @@ public class Kcp
   public void setMinRto(int min)
   {
     rx_minrto = min;
+  }
+
+  /**
+   * order
+   *
+   * @param order
+   */
+  public void setOrder(ByteOrder order)
+  {
+    this.order = order;
   }
 
   @Override

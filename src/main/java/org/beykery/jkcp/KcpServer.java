@@ -14,6 +14,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import java.net.InetSocketAddress;
+import java.nio.ByteOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,7 @@ public abstract class KcpServer implements Output, KcpListerner
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
   private int conv = 121106;
+  private ByteOrder order;
   private boolean stream;
   private int minRto = Kcp.IKCP_RTO_MIN;
   private KcpThread[] workers;
@@ -97,6 +99,7 @@ public abstract class KcpServer implements Output, KcpListerner
         workers[i].noDelay(nodelay, interval, resend, nc);
         workers[i].setMtu(mtu);
         workers[i].setConv(conv);
+        workers[i].setOrder(order);
         workers[i].setTimeout(timeout);
         workers[i].setMinRto(minRto);
         workers[i].setStream(stream);
@@ -201,6 +204,16 @@ public abstract class KcpServer implements Output, KcpListerner
   public void setConv(int conv)
   {
     this.conv = conv;
+  }
+
+  /**
+   * order
+   *
+   * @param order
+   */
+  public void setOrder(ByteOrder order)
+  {
+    this.order = order;
   }
 
   /**

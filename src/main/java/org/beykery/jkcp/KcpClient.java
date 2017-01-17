@@ -14,6 +14,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import java.net.InetSocketAddress;
+import java.nio.ByteOrder;
 
 /**
  *
@@ -40,6 +41,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
   private final Object waitLock = new Object();
   private InetSocketAddress remote;
   private NioEventLoopGroup nioEventLoopGroup;
+  private ByteOrder order;
 
   /**
    * 客户端
@@ -139,6 +141,26 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
   public void setConv(int conv)
   {
     this.conv = conv;
+  }
+
+  /**
+   * order
+   *
+   * @param order
+   */
+  public void setOrder(ByteOrder order)
+  {
+    this.order = order;
+  }
+
+  /**
+   * order
+   *
+   * @return
+   */
+  public ByteOrder getOrder()
+  {
+    return order;
   }
 
   /**
@@ -259,6 +281,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
       this.kcp.setTimeout(timeout);
       this.kcp.setMtu(mtu);
       this.kcp.setConv(conv);
+      this.kcp.setOrder(order);
       this.kcp.setStream(stream);
       this.kcp.setMinRto(minRto);
       Thread t = new Thread(this);

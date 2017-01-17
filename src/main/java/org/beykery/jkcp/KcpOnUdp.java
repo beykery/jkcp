@@ -5,6 +5,7 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
@@ -77,6 +78,16 @@ public class KcpOnUdp
   public void setConv(int conv)
   {
     this.kcp.setConv(conv);
+  }
+
+  /**
+   * order
+   *
+   * @param order
+   */
+  public void setOrder(ByteOrder order)
+  {
+    this.kcp.setOrder(order);
   }
 
   /**
@@ -351,4 +362,5 @@ public class KcpOnUdp
       item.release();
     }
   }
+
 }

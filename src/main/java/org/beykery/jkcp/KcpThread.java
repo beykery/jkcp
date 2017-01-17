@@ -5,6 +5,7 @@ package org.beykery.jkcp;
 
 import io.netty.channel.socket.DatagramPacket;
 import java.net.InetSocketAddress;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -33,6 +34,7 @@ public class KcpThread extends Thread
   private int minRto = Kcp.IKCP_RTO_MIN;
   private long timeout;//idle
   private final Object lock;//锁
+  private ByteOrder order;
 
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
@@ -83,6 +85,16 @@ public class KcpThread extends Thread
   public void setConv(int conv)
   {
     this.conv = conv;
+  }
+
+  /**
+   * order
+   *
+   * @param order
+   */
+  public void setOrder(ByteOrder order)
+  {
+    this.order = order;
   }
 
   /**
@@ -139,6 +151,7 @@ public class KcpThread extends Thread
           ku.wndSize(sndwnd, rcvwnd);
           ku.setMtu(mtu);
           ku.setConv(conv);
+          ku.setOrder(order);
           ku.setMinRto(minRto);
           ku.setStream(stream);
           ku.setTimeout(timeout);

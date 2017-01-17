@@ -4,6 +4,7 @@
 package test;
 
 import io.netty.buffer.ByteBuf;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import org.beykery.jkcp.KcpOnUdp;
 import org.beykery.jkcp.KcpServer;
@@ -54,6 +55,7 @@ public class TestServer extends KcpServer
     s.setTimeout(10 * 1000);
     s.setMtu(512);
     s.setConv(121106);
+    s.setOrder(ByteOrder.BIG_ENDIAN);
     s.start();
   }
 }
