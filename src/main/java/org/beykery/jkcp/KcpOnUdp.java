@@ -162,6 +162,7 @@ public class KcpOnUdp
     while (!this.received.isEmpty())
     {
       ByteBuf dp = this.received.remove();
+      dp = dp.order(kcp.order());
       errcode = kcp.input(dp);
       dp.release();
       if (errcode != 0)
@@ -178,6 +179,7 @@ public class KcpOnUdp
     while ((len = kcp.peekSize()) > 0)
     {
       ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(len);
+      bb = bb.order(kcp.order());
       int n = kcp.receive(bb);
       if (n > 0)
       {

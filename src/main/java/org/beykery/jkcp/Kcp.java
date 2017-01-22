@@ -95,6 +95,11 @@ public class Kcp
     return later - earlier;
   }
 
+  public ByteOrder order()
+  {
+    return order;
+  }
+
   /**
    * SEGMENT
    */
@@ -149,7 +154,7 @@ public class Kcp
      */
     private void release()
     {
-      if (this.data != null)
+      if (this.data != null && data.refCnt() > 0)
       {
         this.data.release(data.refCnt());
       }
@@ -1139,6 +1144,8 @@ public class Kcp
   public void setOrder(ByteOrder order)
   {
     this.order = order;
+    buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
+    buffer = buffer.order(order);
   }
 
   @Override

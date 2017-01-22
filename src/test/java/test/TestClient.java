@@ -24,7 +24,7 @@ public class TestClient extends KcpClient
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
     String content = bb.toString(Charset.forName("utf-8"));
-    System.out.println(content);
+    System.out.println(content+" order "+bb.order());
     ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(2048);
     buf.writeBytes(content.getBytes(Charset.forName("utf-8")));
     kcp.send(buf);
@@ -66,7 +66,7 @@ public class TestClient extends KcpClient
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
     tc.setConv(121106);
-    tc.setOrder(ByteOrder.BIG_ENDIAN);
+    tc.setOrder(ByteOrder.LITTLE_ENDIAN);//此处设置为小头才能与kcp协议兼容，kcp里面的IWORDS_BIG_ENDIAN跟此处意义并不相同(可能还是要改成跟原作kcp一样的思路，只使用小端编码)
     tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
     String content = "sdfkasd你好。。。。。。。";
