@@ -66,7 +66,7 @@ public class TestClient extends KcpClient
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
     tc.setConv(121106);
-    tc.setOrder(ByteOrder.LITTLE_ENDIAN);//此处设置为小头才能与kcp协议兼容，kcp里面的IWORDS_BIG_ENDIAN跟此处意义并不相同(可能还是要改成跟原作kcp一样的思路，只使用小端编码)
+   
     tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
     String content = "sdfkasd你好。。。。。。。";

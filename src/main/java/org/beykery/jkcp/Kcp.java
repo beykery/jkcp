@@ -10,7 +10,6 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import java.nio.ByteOrder;
 import java.util.LinkedList;
 
 /**
@@ -83,7 +82,6 @@ public class Kcp
   private final Output output;
   private final Object user;//远端地址
   private int nextUpdate;//the next update time.
-  private ByteOrder order = ByteOrder.BIG_ENDIAN;
 
   private static int _ibound_(int lower, int middle, int upper)
   {
@@ -93,11 +91,6 @@ public class Kcp
   private static int _itimediff(int later, int earlier)
   {
     return later - earlier;
-  }
-
-  public ByteOrder order()
-  {
-    return order;
   }
 
   /**
@@ -124,7 +117,6 @@ public class Kcp
       if (size > 0)
       {
         this.data = PooledByteBufAllocator.DEFAULT.buffer(size);
-        this.data = data.order(order);
       }
     }
 
@@ -138,14 +130,14 @@ public class Kcp
     private int encode(ByteBuf buf)
     {
       int off = buf.writerIndex();
-      buf.writeInt(conv);
+      buf.writeIntLE(conv);
       buf.writeByte(cmd);
       buf.writeByte(frg);
-      buf.writeShort(wnd);
-      buf.writeInt(ts);
-      buf.writeInt(sn);
-      buf.writeInt(una);
-      buf.writeInt(data == null ? 0 : data.readableBytes());
+      buf.writeShortLE(wnd);
+      buf.writeIntLE(ts);
+      buf.writeIntLE(sn);
+      buf.writeIntLE(una);
+      buf.writeIntLE(data == null ? 0 : data.readableBytes());
       return buf.writerIndex() - off;
     }
 
@@ -183,7 +175,6 @@ public class Kcp
     ssthresh = IKCP_THRESH_INIT;
     dead_link = IKCP_DEADLINK;
     buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-    buffer = buffer.order(order);
     this.output = output;
     this.user = user;
   }
@@ -555,18 +546,18 @@ public class Kcp
       {
         break;
       }
-      conv_ = data.readInt();
+      conv_ = data.readIntLE();
       if (this.conv != conv_)
       {
         return -1;
       }
       cmd = data.readByte();
       frg = data.readByte();
-      wnd = data.readShort();
-      ts = data.readInt();
-      sn = data.readInt();
-      una = data.readInt();
-      len = data.readInt();
+      wnd = data.readShortLE();
+      ts = data.readIntLE();
+      sn = data.readIntLE();
+      una = data.readIntLE();
+      len = data.readIntLE();
       if (data.readableBytes() < len)
       {
         return -2;
@@ -709,7 +700,6 @@ public class Kcp
       {
         this.output.out(buffer, this, user);
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-        buffer = buffer.order(order);
       }
       seg.sn = acklist.get(i * 2 + 0);
       seg.ts = acklist.get(i * 2 + 1);
@@ -750,7 +740,6 @@ public class Kcp
       {
         this.output.out(buffer, this, user);
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-        buffer = buffer.order(order);
       }
       seg.encode(buffer);
     }
@@ -762,7 +751,6 @@ public class Kcp
       {
         this.output.out(buffer, this, user);
         buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-        buffer = buffer.order(order);
       }
       seg.encode(buffer);
     }
@@ -847,7 +835,6 @@ public class Kcp
         {
           this.output.out(buffer, this, user);
           buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-          buffer = buffer.order(order);
         }
         segment.encode(buffer);
         if (segment.data.readableBytes() > 0)
@@ -865,7 +852,6 @@ public class Kcp
     {
       this.output.out(buffer, this, user);
       buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-      buffer = buffer.order(order);
     }
     // update ssthresh
     if (change != 0)
@@ -989,7 +975,6 @@ public class Kcp
       return -1;
     }
     ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-    buf = buf.order(order);
     this.mtu = mtu;
     mss = mtu - IKCP_OVERHEAD;
     if (buffer != null)
@@ -1134,18 +1119,6 @@ public class Kcp
   public void setMinRto(int min)
   {
     rx_minrto = min;
-  }
-
-  /**
-   * order
-   *
-   * @param order
-   */
-  public void setOrder(ByteOrder order)
-  {
-    this.order = order;
-    buffer = PooledByteBufAllocator.DEFAULT.buffer((mtu + IKCP_OVERHEAD) * 3);
-    buffer = buffer.order(order);
   }
 
   @Override

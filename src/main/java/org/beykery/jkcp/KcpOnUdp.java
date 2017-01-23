@@ -5,7 +5,6 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
@@ -81,16 +80,6 @@ public class KcpOnUdp
   }
 
   /**
-   * order
-   *
-   * @param order
-   */
-  public void setOrder(ByteOrder order)
-  {
-    this.kcp.setOrder(order);
-  }
-
-  /**
    * stream模式
    *
    * @param stream
@@ -162,7 +151,6 @@ public class KcpOnUdp
     while (!this.received.isEmpty())
     {
       ByteBuf dp = this.received.remove();
-      dp = dp.order(kcp.order());
       errcode = kcp.input(dp);
       dp.release();
       if (errcode != 0)
@@ -179,7 +167,6 @@ public class KcpOnUdp
     while ((len = kcp.peekSize()) > 0)
     {
       ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(len);
-      bb = bb.order(kcp.order());
       int n = kcp.receive(bb);
       if (n > 0)
       {
