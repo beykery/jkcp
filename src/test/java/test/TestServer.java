@@ -4,7 +4,6 @@
 package test;
 
 import io.netty.buffer.ByteBuf;
-import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import org.beykery.jkcp.KcpOnUdp;
 import org.beykery.jkcp.KcpServer;
@@ -51,6 +50,7 @@ public class TestServer extends KcpServer
   {
     TestServer s = new TestServer(2222, 1);
     s.noDelay(1, 10, 2, 1);
+    s.setMinRto(10);
     s.wndSize(64, 64);
     s.setTimeout(10 * 1000);
     s.setMtu(512);

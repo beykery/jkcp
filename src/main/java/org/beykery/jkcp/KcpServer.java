@@ -14,8 +14,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import java.net.InetSocketAddress;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -24,7 +22,6 @@ import org.slf4j.LoggerFactory;
 public abstract class KcpServer implements Output, KcpListerner
 {
 
-  private static final Logger LOG = LoggerFactory.getLogger(KcpServer.class);
   private final NioDatagramChannel channel;
   private final InetSocketAddress addr;
   private int nodelay;

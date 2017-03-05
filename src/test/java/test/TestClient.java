@@ -7,7 +7,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.util.ResourceLeakDetector;
 import java.net.InetSocketAddress;
-import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import org.beykery.jkcp.Kcp;
 import org.beykery.jkcp.KcpClient;
@@ -24,7 +23,7 @@ public class TestClient extends KcpClient
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
     String content = bb.toString(Charset.forName("utf-8"));
-    System.out.println(content+" order "+bb.order());
+    System.out.println(content + " order " + bb.order());
     ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(2048);
     buf.writeBytes(content.getBytes(Charset.forName("utf-8")));
     kcp.send(buf);
@@ -62,11 +61,12 @@ public class TestClient extends KcpClient
     ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
     TestClient tc = new TestClient();
     tc.noDelay(1, 20, 2, 1);
+    tc.setMinRto(10);
     tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
     tc.setConv(121106);
-   
+
     tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();
     String content = "sdfkasd你好。。。。。。。";

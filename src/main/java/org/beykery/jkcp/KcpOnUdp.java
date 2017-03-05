@@ -9,8 +9,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  *
@@ -19,7 +17,6 @@ import org.slf4j.LoggerFactory;
 public class KcpOnUdp
 {
 
-  private static final Logger LOG = LoggerFactory.getLogger(KcpOnUdp.class);
   private final Kcp kcp;//kcp的状态
   private final Queue<ByteBuf> received;//输入
   private final Queue<ByteBuf> sendList;

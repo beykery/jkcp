@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.beykery</groupId>
   <artifactId>jkcp</artifactId>
-  <version>1.2.0</version>
+  <version>1.2.1</version>
   <packaging>jar</packaging>    
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -111,13 +111,15 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>
-      <version>4.1.6.Final</version>
+      <version>4.1.8.Final</version>
     </dependency>
+    <!--
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.7.21</version>
+      <version>1.7.24</version>
       <type>jar</type>
     </dependency>
+    -->
   </dependencies>
 </project>
