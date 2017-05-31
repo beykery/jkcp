@@ -3,6 +3,7 @@
  */
 package org.beykery.jkcp;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.socket.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -132,19 +133,22 @@ public class KcpThread extends Thread
       {
         DatagramPacket dp = this.inputs.remove();
         KcpOnUdp ku = this.kcps.get(dp.sender());
+        ByteBuf content = dp.content();
         if (ku == null)
         {
           ku = new KcpOnUdp(this.out, dp.sender(), this.listerner);//初始化
           ku.noDelay(nodelay, interval, resend, nc);
           ku.wndSize(sndwnd, rcvwnd);
           ku.setMtu(mtu);
+          // conv应该在客户端第一次建立时获取
+          int conv = content.getIntLE(0);
           ku.setConv(conv);
           ku.setMinRto(minRto);
           ku.setStream(stream);
           ku.setTimeout(timeout);
           this.kcps.put(dp.sender(), ku);
         }
-        ku.input(dp.content());
+        ku.input(content);
       }
       //update
       KcpOnUdp temp = null;
@@ -184,9 +188,6 @@ public class KcpThread extends Thread
 
   /**
    * 收到输入
-   *
-   * @param addr
-   * @param content
    */
   void input(DatagramPacket dp)
   {
