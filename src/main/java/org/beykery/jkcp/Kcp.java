@@ -124,7 +124,6 @@ public class Kcp
      * encode a segment into buffer
      *
      * @param buf
-     * @param offset
      * @return
      */
     private int encode(ByteBuf buf)
