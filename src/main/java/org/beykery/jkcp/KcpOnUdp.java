@@ -5,6 +5,7 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
@@ -28,6 +29,8 @@ public class KcpOnUdp
   private volatile boolean closed;
   private String sessionId;
   private final Map<Object, Object> session;
+  private final InetSocketAddress remote;//远程地址
+  private final InetSocketAddress local;//本地
 
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
@@ -109,17 +112,20 @@ public class KcpOnUdp
   /**
    * kcp for udp
    *
-   * @param out
-   * @param user
-   * @param listerner
+   * @param out 输出接口
+   * @param remote 远程地址
+   * @param local 本地地址
+   * @param listerner 监听
    */
-  public KcpOnUdp(Output out, Object user, KcpListerner listerner)
+  public KcpOnUdp(Output out, InetSocketAddress remote, InetSocketAddress local, KcpListerner listerner)
   {
     this.listerner = listerner;
-    kcp = new Kcp(121106, out, user);
+    kcp = new Kcp(out, remote);
     received = new LinkedBlockingQueue<>();
     sendList = new LinkedBlockingQueue<>();
     this.session = new HashMap<>();
+    this.remote = remote;
+    this.local = local;
   }
 
   /**
@@ -245,7 +251,7 @@ public class KcpOnUdp
   @Override
   public String toString()
   {
-    return this.kcp.toString();
+    return "local: " + local + " remote: " + remote;
   }
 
   /**
@@ -331,6 +337,36 @@ public class KcpOnUdp
   boolean needUpdate()
   {
     return this.needUpdate;
+  }
+
+  /**
+   * 监听器
+   *
+   * @return
+   */
+  public KcpListerner getListerner()
+  {
+    return listerner;
+  }
+
+  /**
+   * 本地地址
+   *
+   * @return
+   */
+  public InetSocketAddress getLocal()
+  {
+    return local;
+  }
+
+  /**
+   * 远程地址
+   *
+   * @return
+   */
+  public InetSocketAddress getRemote()
+  {
+    return remote;
   }
 
   /**

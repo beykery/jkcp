@@ -22,7 +22,7 @@ public interface KcpListerner
 
   /**
    *
-   * 异常
+   * kcp异常，之后此kcp就会被关闭
    *
    * @param ex 异常
    * @param kcp 发生异常的kcp，null表示非kcp错误

@@ -29,11 +29,11 @@ public class KcpThread extends Thread
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
-  private int conv = 121106;
   private boolean stream;
   private int minRto = Kcp.IKCP_RTO_MIN;
   private long timeout;//idle
   private final Object lock;//锁
+  private final InetSocketAddress local;//本地地址
 
   /**
    * fastest: ikcp_nodelay(kcp, 1, 20, 2, 1) nodelay: 0:disable(default),
@@ -77,28 +77,20 @@ public class KcpThread extends Thread
   }
 
   /**
-   * conv
-   *
-   * @param conv
-   */
-  public void setConv(int conv)
-  {
-    this.conv = conv;
-  }
-
-  /**
    * kcp工作线程
    *
    * @param out
    * @param listerner
+   * @param local
    */
-  public KcpThread(Output out, KcpListerner listerner)
+  public KcpThread(Output out, KcpListerner listerner, InetSocketAddress local)
   {
     this.out = out;
     this.listerner = listerner;
     inputs = new LinkedBlockingQueue<>();
     kcps = new HashMap<>();
     this.lock = new Object();
+    this.local = local;
   }
 
   /**
@@ -136,7 +128,7 @@ public class KcpThread extends Thread
         ByteBuf content = dp.content();
         if (ku == null)
         {
-          ku = new KcpOnUdp(this.out, dp.sender(), this.listerner);//初始化
+          ku = new KcpOnUdp(this.out, dp.sender(), local, this.listerner);//初始化
           ku.noDelay(nodelay, interval, resend, nc);
           ku.wndSize(sndwnd, rcvwnd);
           ku.setMtu(mtu);

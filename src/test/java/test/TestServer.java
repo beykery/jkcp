@@ -24,7 +24,7 @@ public class TestServer extends KcpServer
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
     String content = bb.toString(Charset.forName("utf-8"));
-    System.out.println("msg:" + content + " from " + kcp+" order "+bb.order());
+    System.out.println("msg:" + content + " kcp--> " + kcp);
     kcp.send(bb);//echo
   }
 
@@ -54,8 +54,6 @@ public class TestServer extends KcpServer
     s.wndSize(64, 64);
     s.setTimeout(10 * 1000);
     s.setMtu(512);
-    s.setConv(121106);
-   
     s.start();
   }
 }

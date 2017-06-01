@@ -23,13 +23,19 @@ public class TestClient extends KcpClient
   public void handleReceive(ByteBuf bb, KcpOnUdp kcp)
   {
     String content = bb.toString(Charset.forName("utf-8"));
-    System.out.println(content + " order " + bb.order());
+    System.out.println("conv:" + kcp.getKcp().getConv() + " recv:" + content + " kcp-->" + kcp);
     ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(2048);
     buf.writeBytes(content.getBytes(Charset.forName("utf-8")));
     kcp.send(buf);
     bb.release();
   }
 
+  /**
+   * kcp异常，之后此kcp就会被关闭
+   *
+   * @param ex
+   * @param kcp
+   */
   @Override
   public void handleException(Throwable ex, KcpOnUdp kcp)
   {
@@ -65,7 +71,7 @@ public class TestClient extends KcpClient
     tc.wndSize(32, 32);
     tc.setTimeout(10 * 1000);
     tc.setMtu(512);
-    tc.setConv(121106);
+    // tc.setConv(121106);//默认conv随机
 
     tc.connect(new InetSocketAddress("localhost", 2222));
     tc.start();

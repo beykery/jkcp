@@ -155,13 +155,11 @@ public class Kcp
   /**
    * create a new kcpcb
    *
-   * @param conv
    * @param output
    * @param user
    */
-  public Kcp(int conv, Output output, Object user)
+  public Kcp(Output output, Object user)
   {
-    this.conv = conv;
     snd_wnd = IKCP_WND_SND;
     rcv_wnd = IKCP_WND_RCV;
     rmt_wnd = IKCP_WND_RCV;
@@ -992,6 +990,16 @@ public class Kcp
   public void setConv(int conv)
   {
     this.conv = conv;
+  }
+
+  /**
+   * conv
+   *
+   * @return
+   */
+  public int getConv()
+  {
+    return conv;
   }
 
   /**

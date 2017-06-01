@@ -31,7 +31,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
   private int sndwnd = Kcp.IKCP_WND_SND;
   private int rcvwnd = Kcp.IKCP_WND_RCV;
   private int mtu = Kcp.IKCP_MTU_DEF;
-  private int conv = 121106;
+  private int conv = (int) (Math.random() * Integer.MAX_VALUE);
   private boolean stream;
   private int minRto = Kcp.IKCP_RTO_MIN;
   private long timeout;
@@ -261,7 +261,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
     if (!this.running)
     {
       this.running = true;
-      this.kcp = new KcpOnUdp(this, remote, this);
+      this.kcp = new KcpOnUdp(this, remote, addr, this);
       this.kcp.noDelay(nodelay, interval, resend, nc);
       this.kcp.wndSize(sndwnd, rcvwnd);
       this.kcp.setTimeout(timeout);
