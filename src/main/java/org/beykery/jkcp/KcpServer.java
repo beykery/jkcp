@@ -241,6 +241,7 @@ public abstract class KcpServer implements Output, KcpListerner
     {
       InetSocketAddress sender = dp.sender();
       int hash = sender.hashCode();
+      hash = hash < 0 ? -hash : hash;
       this.workers[hash % workers.length].input(dp);
     } else
     {
