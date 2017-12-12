@@ -282,12 +282,13 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
         while (running)
         {
             start = System.currentTimeMillis();
-            if (this.kcp.isClosed())
+            if (kcp.isClosed())
             {
                 this.running = false;
                 continue;
             }
-            this.kcp.update();
+            kcp.update();
+            kcp.flush();
             end = System.currentTimeMillis();
             if (end - start < interval)
             {

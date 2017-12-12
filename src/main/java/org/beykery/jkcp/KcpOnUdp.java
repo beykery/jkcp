@@ -143,6 +143,18 @@ public class KcpOnUdp
     }
 
     /**
+     * force flush
+     */
+    void flush()
+    {
+        if (this.needUpdate)
+        {
+            kcp.flush();
+            this.needUpdate = false;
+        }
+    }
+
+    /**
      * update one kcp
      *
      * @param addr
