@@ -194,12 +194,16 @@ public class KcpOnUdp
             }
         }
         //update kcp status
+        if (this.needUpdate)
+        {
+            kcp.flush();
+            this.needUpdate = false;
+        }
         int cur = (int) System.currentTimeMillis();
-        if (this.needUpdate || cur >= kcp.getNextUpdate())
+        if (cur >= kcp.getNextUpdate())
         {
             kcp.update(cur);
             kcp.setNextUpdate(kcp.check(cur));
-            this.needUpdate = false;
         }
         //check timeout
         if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - lastTime > this.timeout)

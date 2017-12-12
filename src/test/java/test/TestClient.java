@@ -64,7 +64,7 @@ public class TestClient extends KcpClient
    */
   public static void main(String[] args) throws InterruptedException
   {
-    ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.ADVANCED);
+    ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
     TestClient tc = new TestClient();
     tc.noDelay(1, 20, 2, 1);
     tc.setMinRto(10);

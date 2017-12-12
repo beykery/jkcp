@@ -675,7 +675,7 @@ public class Kcp
   /**
    * flush pending data
    */
-  private void flush()
+  public void flush()
   {
     int cur = current;
     int change = 0;

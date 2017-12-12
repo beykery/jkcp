@@ -288,10 +288,6 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
                 continue;
             }
             this.kcp.update();
-            if (this.kcp.needUpdate())
-            {
-                continue;
-            }
             end = System.currentTimeMillis();
             if (end - start < interval)
             {
