@@ -81,7 +81,7 @@ public class Kcp
     private boolean stream;//流模式
     private final Output output;
     private final Object user;//远端地址
-    private int nextUpdate;//the next update time.
+    private long nextUpdate;//the next update time.
 
     private static int _ibound_(int lower, int middle, int upper)
     {
@@ -89,6 +89,11 @@ public class Kcp
     }
 
     private static int _itimediff(int later, int earlier)
+    {
+        return later - earlier;
+    }
+
+    private static long _itimediff(long later, long earlier)
     {
         return later - earlier;
     }
@@ -928,15 +933,15 @@ public class Kcp
      * @param current
      * @return
      */
-    public int check(long current)
+    public long check(long current)
     {
-        int cur = (int) current;
+        long cur = current;
         if (updated == 0)
         {
             return cur;
         }
-        int ts_flush_temp = this.ts_flush;
-        int tm_packet = 0x7fffffff;
+        long ts_flush_temp = this.ts_flush;
+        long tm_packet = 0x7fffffff;
         if (_itimediff(cur, ts_flush_temp) >= 10000 || _itimediff(cur, ts_flush_temp) < -10000)
         {
             ts_flush_temp = cur;
@@ -945,10 +950,10 @@ public class Kcp
         {
             return cur;
         }
-        int tm_flush = _itimediff(ts_flush_temp, cur);
+        long tm_flush = _itimediff(ts_flush_temp, cur);
         for (Segment seg : snd_buf)
         {
-            int diff = _itimediff(seg.resendts, cur);
+            long diff = _itimediff(seg.resendts, cur);
             if (diff <= 0)
             {
                 return cur;
@@ -958,7 +963,7 @@ public class Kcp
                 tm_packet = diff;
             }
         }
-        int minimal = tm_packet < tm_flush ? tm_packet : tm_flush;
+        long minimal = tm_packet < tm_flush ? tm_packet : tm_flush;
         if (minimal >= interval)
         {
             minimal = interval;
@@ -1105,12 +1110,12 @@ public class Kcp
         return snd_buf.size() + snd_queue.size();
     }
 
-    public void setNextUpdate(int nextUpdate)
+    public void setNextUpdate(long nextUpdate)
     {
         this.nextUpdate = nextUpdate;
     }
 
-    public int getNextUpdate()
+    public long getNextUpdate()
     {
         return nextUpdate;
     }

@@ -199,7 +199,7 @@ public class KcpOnUdp
             kcp.flush();
             this.needUpdate = false;
         }
-        int cur = (int) System.currentTimeMillis();
+        long cur = System.currentTimeMillis();
         if (cur >= kcp.getNextUpdate())
         {
             kcp.update(cur);
@@ -235,6 +235,13 @@ public class KcpOnUdp
     public boolean isClosed()
     {
         return closed;
+    }
+
+    public void close(){
+        this.closed = true;
+        this.release();
+        this.listerner.handleClose(this);
+        return;
     }
 
     public Kcp getKcp()
