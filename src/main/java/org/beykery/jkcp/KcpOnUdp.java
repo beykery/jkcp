@@ -5,6 +5,7 @@ package org.beykery.jkcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,11 +13,9 @@ import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- *
  * @author beykery
  */
-public class KcpOnUdp
-{
+public class KcpOnUdp {
 
     private final Kcp kcp;//kcp的状态
     private final Queue<ByteBuf> received;//输入
@@ -43,8 +42,7 @@ public class KcpOnUdp
      * @param resend
      * @param nc
      */
-    public void noDelay(int nodelay, int interval, int resend, int nc)
-    {
+    public void noDelay(int nodelay, int interval, int resend, int nc) {
         this.kcp.noDelay(nodelay, interval, resend, nc);
     }
 
@@ -54,8 +52,7 @@ public class KcpOnUdp
      * @param sndwnd
      * @param rcvwnd
      */
-    public void wndSize(int sndwnd, int rcvwnd)
-    {
+    public void wndSize(int sndwnd, int rcvwnd) {
         this.kcp.wndSize(sndwnd, rcvwnd);
     }
 
@@ -64,8 +61,7 @@ public class KcpOnUdp
      *
      * @param mtu
      */
-    public void setMtu(int mtu)
-    {
+    public void setMtu(int mtu) {
         this.kcp.setMtu(mtu);
     }
 
@@ -74,8 +70,7 @@ public class KcpOnUdp
      *
      * @param conv
      */
-    public void setConv(int conv)
-    {
+    public void setConv(int conv) {
         this.kcp.setConv(conv);
     }
 
@@ -84,8 +79,7 @@ public class KcpOnUdp
      *
      * @param stream
      */
-    public void setStream(boolean stream)
-    {
+    public void setStream(boolean stream) {
         this.kcp.setStream(stream);
     }
 
@@ -94,8 +88,7 @@ public class KcpOnUdp
      *
      * @return
      */
-    public boolean isStream()
-    {
+    public boolean isStream() {
         return this.kcp.isStream();
     }
 
@@ -104,21 +97,19 @@ public class KcpOnUdp
      *
      * @param rto
      */
-    public void setMinRto(int rto)
-    {
+    public void setMinRto(int rto) {
         this.kcp.setMinRto(rto);
     }
 
     /**
      * kcp for udp
      *
-     * @param out 输出接口
-     * @param remote 远程地址
-     * @param local 本地地址
+     * @param out       输出接口
+     * @param remote    远程地址
+     * @param local     本地地址
      * @param listerner 监听
      */
-    public KcpOnUdp(Output out, InetSocketAddress remote, InetSocketAddress local, KcpListerner listerner)
-    {
+    public KcpOnUdp(Output out, InetSocketAddress remote, InetSocketAddress local, KcpListerner listerner) {
         this.listerner = listerner;
         kcp = new Kcp(out, remote);
         received = new LinkedBlockingQueue<>();
@@ -133,10 +124,8 @@ public class KcpOnUdp
      *
      * @param bb
      */
-    public void send(ByteBuf bb)
-    {
-        if (!closed)
-        {
+    public void send(ByteBuf bb) {
+        if (!closed) {
             this.sendList.add(bb);
             this.needUpdate = true;
         }
@@ -148,16 +137,13 @@ public class KcpOnUdp
      * @param addr
      * @param kcp
      */
-    void update()
-    {
+    void update() {
         //input
-        while (!this.received.isEmpty())
-        {
+        while (!this.received.isEmpty()) {
             ByteBuf dp = this.received.remove();
             errcode = kcp.input(dp);
             dp.release();
-            if (errcode != 0)
-            {
+            if (errcode != 0) {
                 this.closed = true;
                 this.release();
                 this.listerner.handleException(new IllegalStateException("input error : " + errcode), this);
@@ -167,25 +153,20 @@ public class KcpOnUdp
         }
         //receive
         int len;
-        while ((len = kcp.peekSize()) > 0)
-        {
+        while ((len = kcp.peekSize()) > 0) {
             ByteBuf bb = PooledByteBufAllocator.DEFAULT.buffer(len);
             int n = kcp.receive(bb);
-            if (n > 0)
-            {
+            if (n > 0) {
                 this.listerner.handleReceive(bb, this);
-            } else
-            {
+            } else {
                 bb.release();
             }
         }
         //send
-        while (!this.sendList.isEmpty())
-        {
+        while (!this.sendList.isEmpty()) {
             ByteBuf bb = sendList.remove();
             errcode = this.kcp.send(bb);
-            if (errcode != 0)
-            {
+            if (errcode != 0) {
                 this.closed = true;
                 this.release();
                 this.listerner.handleException(new IllegalStateException("send error : " + errcode), this);
@@ -194,20 +175,17 @@ public class KcpOnUdp
             }
         }
         //update kcp status
-        if (this.needUpdate)
-        {
+        if (this.needUpdate) {
             kcp.flush();
             this.needUpdate = false;
         }
         long cur = System.currentTimeMillis();
-        if (cur >= kcp.getNextUpdate())
-        {
+        if (cur >= kcp.getNextUpdate()) {
             kcp.update(cur);
             kcp.setNextUpdate(kcp.check(cur));
         }
         //check timeout
-        if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - lastTime > this.timeout)
-        {
+        if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - lastTime > this.timeout) {
             this.closed = true;
             this.release();
             this.listerner.handleClose(this);
@@ -219,49 +197,41 @@ public class KcpOnUdp
      *
      * @param content
      */
-    void input(ByteBuf content)
-    {
-        if (!this.closed)
-        {
+    void input(ByteBuf content) {
+        if (!this.closed) {
             this.received.add(content);
             this.needUpdate = true;
             this.lastTime = System.currentTimeMillis();
-        } else
-        {
+        } else {
             content.release();
         }
     }
 
-    public boolean isClosed()
-    {
+    public boolean isClosed() {
         return closed;
     }
 
-    public void close(){
+    public void close() {
         this.closed = true;
         this.release();
         this.listerner.handleClose(this);
         return;
     }
 
-    public Kcp getKcp()
-    {
+    public Kcp getKcp() {
         return kcp;
     }
 
-    public void setTimeout(long timeout)
-    {
+    public void setTimeout(long timeout) {
         this.timeout = timeout;
     }
 
-    public long getTimeout()
-    {
+    public long getTimeout() {
         return timeout;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "local: " + local + " remote: " + remote;
     }
 
@@ -270,8 +240,7 @@ public class KcpOnUdp
      *
      * @return
      */
-    public String getSessionId()
-    {
+    public String getSessionId() {
         return sessionId;
     }
 
@@ -280,8 +249,7 @@ public class KcpOnUdp
      *
      * @param sessionId
      */
-    public void setSessionId(String sessionId)
-    {
+    public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
     }
 
@@ -290,8 +258,7 @@ public class KcpOnUdp
      *
      * @return
      */
-    public Map<Object, Object> getSessionMap()
-    {
+    public Map<Object, Object> getSessionMap() {
         return session;
     }
 
@@ -301,8 +268,7 @@ public class KcpOnUdp
      * @param k
      * @return
      */
-    public Object getSession(Object k)
-    {
+    public Object getSession(Object k) {
         return this.session.get(k);
     }
 
@@ -313,8 +279,7 @@ public class KcpOnUdp
      * @param v
      * @return
      */
-    public Object setSession(Object k, Object v)
-    {
+    public Object setSession(Object k, Object v) {
         return this.session.put(k, v);
     }
 
@@ -324,8 +289,7 @@ public class KcpOnUdp
      * @param k
      * @return
      */
-    public boolean containsSessionKey(Object k)
-    {
+    public boolean containsSessionKey(Object k) {
         return this.session.containsKey(k);
     }
 
@@ -335,8 +299,7 @@ public class KcpOnUdp
      * @param v
      * @return
      */
-    public boolean containsSessionValue(Object v)
-    {
+    public boolean containsSessionValue(Object v) {
         return this.session.containsValue(v);
     }
 
@@ -345,8 +308,7 @@ public class KcpOnUdp
      *
      * @return
      */
-    boolean needUpdate()
-    {
+    boolean needUpdate() {
         return this.needUpdate;
     }
 
@@ -355,8 +317,7 @@ public class KcpOnUdp
      *
      * @return
      */
-    public KcpListerner getListerner()
-    {
+    public KcpListerner getListerner() {
         return listerner;
     }
 
@@ -365,8 +326,7 @@ public class KcpOnUdp
      *
      * @return
      */
-    public InetSocketAddress getLocal()
-    {
+    public InetSocketAddress getLocal() {
         return local;
     }
 
@@ -375,23 +335,19 @@ public class KcpOnUdp
      *
      * @return
      */
-    public InetSocketAddress getRemote()
-    {
+    public InetSocketAddress getRemote() {
         return remote;
     }
 
     /**
      * 释放内存
      */
-    void release()
-    {
+    void release() {
         this.kcp.release();
-        for (ByteBuf item : this.received)
-        {
+        for (ByteBuf item : this.received) {
             item.release();
         }
-        for (ByteBuf item : this.sendList)
-        {
+        for (ByteBuf item : this.sendList) {
             item.release();
         }
     }

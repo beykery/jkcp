@@ -13,14 +13,13 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
+
 import java.net.InetSocketAddress;
 
 /**
- *
  * @author beykery
  */
-public abstract class KcpClient implements Output, KcpListerner, Runnable
-{
+public abstract class KcpClient implements Output, KcpListerner, Runnable {
 
     private final NioDatagramChannel channel;
     private final InetSocketAddress addr;
@@ -44,8 +43,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
     /**
      * client
      */
-    public KcpClient()
-    {
+    public KcpClient() {
         this(0);
     }
 
@@ -54,31 +52,25 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      *
      * @param port
      */
-    public KcpClient(int port)
-    {
+    public KcpClient(int port) {
         nioEventLoopGroup = new NioEventLoopGroup();
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.channel(NioDatagramChannel.class);
         bootstrap.group(nioEventLoopGroup);
-        bootstrap.handler(new ChannelInitializer<NioDatagramChannel>()
-        {
+        bootstrap.handler(new ChannelInitializer<NioDatagramChannel>() {
 
             @Override
-            protected void initChannel(NioDatagramChannel ch) throws Exception
-            {
+            protected void initChannel(NioDatagramChannel ch) throws Exception {
                 ChannelPipeline cp = ch.pipeline();
-                cp.addLast(new ChannelInboundHandlerAdapter()
-                {
+                cp.addLast(new ChannelInboundHandlerAdapter() {
                     @Override
-                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
-                    {
+                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
                         DatagramPacket dp = (DatagramPacket) msg;
                         KcpClient.this.onReceive(dp);
                     }
 
                     @Override
-                    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
-                    {
+                    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
                         KcpClient.this.handleException(cause, null);
                         KcpClient.this.close();
                     }
@@ -88,11 +80,9 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
         ChannelFuture sync = bootstrap.bind(port).syncUninterruptibly();
         channel = (NioDatagramChannel) sync.channel();
         addr = channel.localAddress();
-        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable()
-        {
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override
-            public void run()
-            {
+            public void run() {
                 nioEventLoopGroup.shutdownGracefully();
             }
         }));
@@ -109,8 +99,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      * @param resend
      * @param nc
      */
-    public void noDelay(int nodelay, int interval, int resend, int nc)
-    {
+    public void noDelay(int nodelay, int interval, int resend, int nc) {
         this.nodelay = nodelay;
         this.interval = interval;
         this.resend = resend;
@@ -123,8 +112,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      * @param sndwnd
      * @param rcvwnd
      */
-    public void wndSize(int sndwnd, int rcvwnd)
-    {
+    public void wndSize(int sndwnd, int rcvwnd) {
         this.sndwnd = sndwnd;
         this.rcvwnd = rcvwnd;
     }
@@ -134,8 +122,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      *
      * @param mtu
      */
-    public void setMtu(int mtu)
-    {
+    public void setMtu(int mtu) {
         this.mtu = mtu;
     }
 
@@ -144,39 +131,32 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      *
      * @param conv
      */
-    public void setConv(int conv)
-    {
+    public void setConv(int conv) {
         this.conv = conv;
     }
 
     /**
      * stream mode
      *
-     *
      * @param stream
      */
-    public void setStream(boolean stream)
-    {
+    public void setStream(boolean stream) {
         this.stream = stream;
     }
 
-    public boolean isStream()
-    {
+    public boolean isStream() {
         return stream;
     }
 
-    public void setMinRto(int minRto)
-    {
+    public void setMinRto(int minRto) {
         this.minRto = minRto;
     }
 
-    public void setTimeout(long timeout)
-    {
+    public void setTimeout(long timeout) {
         this.timeout = timeout;
     }
 
-    public long getTimeout()
-    {
+    public long getTimeout() {
         return this.timeout;
     }
 
@@ -185,22 +165,19 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      *
      * @param addr
      */
-    public void connect(InetSocketAddress addr)
-    {
+    public void connect(InetSocketAddress addr) {
         this.remote = addr;
         this.channel.connect(addr);
     }
 
     @Override
-    public void out(ByteBuf msg, Kcp kcp, Object user)
-    {
+    public void out(ByteBuf msg, Kcp kcp, Object user) {
         DatagramPacket temp = new DatagramPacket(msg, (InetSocketAddress) user, this.addr);
         this.channel.writeAndFlush(temp);
     }
 
     @Override
-    public void handleClose(KcpOnUdp kcp)
-    {
+    public void handleClose(KcpOnUdp kcp) {
         this.close();
     }
 
@@ -209,29 +186,22 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      *
      * @param dp
      */
-    private void onReceive(DatagramPacket dp)
-    {
-        if (this.kcp != null && this.running)
-        {
+    private void onReceive(DatagramPacket dp) {
+        if (this.kcp != null && this.running) {
             this.kcp.input(dp.content());
-            synchronized (this.waitLock)
-            {
+            synchronized (this.waitLock) {
                 this.waitLock.notify();
             }
-        } else
-        {
+        } else {
             dp.release();
         }
     }
 
     /**
      * 关掉
-     *
      */
-    public void close()
-    {
-        if (this.running)
-        {
+    public void close() {
+        if (this.running) {
             this.running = false;
         }
     }
@@ -241,13 +211,10 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
      *
      * @param bb
      */
-    public void send(ByteBuf bb)
-    {
-        if (this.kcp != null)
-        {
+    public void send(ByteBuf bb) {
+        if (this.kcp != null) {
             this.kcp.send(bb);
-            synchronized (this.waitLock)
-            {
+            synchronized (this.waitLock) {
                 this.waitLock.notify();
             }
         }
@@ -256,10 +223,8 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
     /**
      * 开启线程处理kcp状态
      */
-    public void start()
-    {
-        if (!this.running)
-        {
+    public void start() {
+        if (!this.running) {
             this.running = true;
             this.kcp = new KcpOnUdp(this, remote, addr, this);
             this.kcp.noDelay(nodelay, interval, resend, nc);
@@ -276,28 +241,21 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
     }
 
     @Override
-    public void run()
-    {
+    public void run() {
         long start, end;
-        while (running)
-        {
+        while (running) {
             start = System.currentTimeMillis();
-            if (kcp.isClosed())
-            {
+            if (kcp.isClosed()) {
                 this.running = false;
                 continue;
             }
             kcp.update();
             end = System.currentTimeMillis();
-            if (end - start < interval)
-            {
-                synchronized (waitLock)
-                {
-                    try
-                    {
+            if (end - start < interval) {
+                synchronized (waitLock) {
+                    try {
                         waitLock.wait(this.interval - end + start);
-                    } catch (InterruptedException ex)
-                    {
+                    } catch (InterruptedException ex) {
                     }
                 }
             }
@@ -310,8 +268,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable
     /**
      * 释放内存
      */
-    private void release()
-    {
+    private void release() {
         this.kcp.release();
     }
 
