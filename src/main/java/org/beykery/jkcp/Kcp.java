@@ -11,10 +11,10 @@ package org.beykery.jkcp;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 
-import java.util.LinkedList;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 
 /**
- *
  * @author beykery
  */
 public class Kcp {
@@ -70,11 +70,11 @@ public class Kcp {
     private int probe_wait;
     private final int dead_link;
     private int incr;
-    private final LinkedList<Segment> snd_queue = new LinkedList<>();
-    private final LinkedList<Segment> rcv_queue = new LinkedList<>();
-    private final LinkedList<Segment> snd_buf = new LinkedList<>();
-    private final LinkedList<Segment> rcv_buf = new LinkedList<>();
-    private final LinkedList<Integer> acklist = new LinkedList<>();
+    private final ArrayDeque<Segment> snd_queue = new ArrayDeque<>();
+    private final ArrayDeque<Segment> rcv_queue = new ArrayDeque<>();
+    private final ArrayList<Segment> snd_buf = new ArrayList<>();
+    private final ArrayList<Segment> rcv_buf = new ArrayList<>();
+    private final ArrayList<Integer> acklist = new ArrayList<>();
     private ByteBuf buffer;
     private int fastresend;
     private int nocwnd;
@@ -244,7 +244,7 @@ public class Kcp {
         }
         if (c > 0) {
             for (int i = 0; i < c; i++) {
-                rcv_buf.removeFirst();
+                rcv_buf.remove(0);
             }
         }
         // fast recover
@@ -271,7 +271,7 @@ public class Kcp {
             Segment seg = snd_queue.getLast();
             if (seg.data != null && seg.data.readableBytes() < mss) {
                 int capacity = mss - seg.data.readableBytes();
-                int extend = (buffer.readableBytes() < capacity) ? buffer.readableBytes() : capacity;
+                int extend = Math.min(buffer.readableBytes(), capacity);
                 seg.data.writeBytes(buffer, extend);
                 if (buffer.readableBytes() == 0) {
                     return 0;
@@ -292,7 +292,7 @@ public class Kcp {
         }
         //fragment
         for (int i = 0; i < count; i++) {
-            int size = buffer.readableBytes() > mss ? mss : buffer.readableBytes();
+            int size = Math.min(buffer.readableBytes(), mss);
             Segment seg = new Segment(size);
             seg.data.writeBytes(buffer, size);
             seg.frg = this.stream ? 0 : count - i - 1;
@@ -328,7 +328,7 @@ public class Kcp {
 
     private void shrink_buf() {
         if (snd_buf.size() > 0) {
-            snd_una = snd_buf.getFirst().sn;
+            snd_una = snd_buf.get(0).sn;
         } else {
             snd_una = snd_nxt;
         }
@@ -362,7 +362,7 @@ public class Kcp {
         }
         if (c > 0) {
             for (int i = 0; i < c; i++) {
-                Segment seg = snd_buf.removeFirst();
+                Segment seg = snd_buf.remove(0);
                 seg.data.release(seg.data.refCnt());
             }
         }
@@ -413,11 +413,7 @@ public class Kcp {
             }
         }
         if (!repeat) {
-            if (temp == -1) {
-                rcv_buf.addFirst(newseg);
-            } else {
-                rcv_buf.add(temp + 1, newseg);
-            }
+            rcv_buf.add(temp + 1, newseg);
         } else {
             newseg.release();
         }
@@ -434,13 +430,12 @@ public class Kcp {
         }
         if (0 < c) {
             for (int i = 0; i < c; i++) {
-                rcv_buf.removeFirst();
+                rcv_buf.remove(0);
             }
         }
     }
 
     /**
-     *
      * when you received a low level packet (eg. UDP packet), call it
      *
      * @param data
