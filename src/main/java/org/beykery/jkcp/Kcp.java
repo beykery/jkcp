@@ -11,6 +11,8 @@ package org.beykery.jkcp;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.LinkedList;
 
 /**
@@ -70,11 +72,11 @@ public class Kcp {
     private int probe_wait;
     private final int dead_link;
     private int incr;
-    private final LinkedList<Segment> snd_queue = new LinkedList<>();
-    private final LinkedList<Segment> rcv_queue = new LinkedList<>();
+    private final ArrayDeque<Segment> snd_queue = new ArrayDeque<>();
+    private final ArrayDeque<Segment> rcv_queue = new ArrayDeque<>();
     private final LinkedList<Segment> snd_buf = new LinkedList<>();
     private final LinkedList<Segment> rcv_buf = new LinkedList<>();
-    private final LinkedList<Integer> acklist = new LinkedList<>();
+    private final ArrayList<Integer> acklist = new ArrayList<>();
     private ByteBuf buffer;
     private int fastresend;
     private int nocwnd;
