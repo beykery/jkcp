@@ -13,6 +13,7 @@ import io.netty.buffer.PooledByteBufAllocator;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 /**
  * @author beykery
@@ -72,8 +73,8 @@ public class Kcp {
     private int incr;
     private final ArrayDeque<Segment> snd_queue = new ArrayDeque<>();
     private final ArrayDeque<Segment> rcv_queue = new ArrayDeque<>();
-    private final ArrayList<Segment> snd_buf = new ArrayList<>();
-    private final ArrayList<Segment> rcv_buf = new ArrayList<>();
+    private final LinkedList<Segment> snd_buf = new LinkedList<>();
+    private final LinkedList<Segment> rcv_buf = new LinkedList<>();
     private final ArrayList<Integer> acklist = new ArrayList<>();
     private ByteBuf buffer;
     private int fastresend;
