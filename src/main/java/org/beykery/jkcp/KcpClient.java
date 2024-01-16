@@ -5,12 +5,15 @@ package org.beykery.jkcp;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelPipeline;
+import io.netty.channel.*;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueue;
+import io.netty.channel.kqueue.KQueueDatagramChannel;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 
@@ -21,7 +24,7 @@ import java.net.InetSocketAddress;
  */
 public abstract class KcpClient implements Output, KcpListerner, Runnable {
 
-    private final NioDatagramChannel channel;
+    private final DatagramChannel channel;
     private final InetSocketAddress addr;
     private int nodelay;
     private int interval = Kcp.IKCP_INTERVAL;
@@ -38,7 +41,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable {
     private volatile boolean running;
     private final Object waitLock = new Object();
     private InetSocketAddress remote;
-    private NioEventLoopGroup nioEventLoopGroup;
+    private final EventLoopGroup nioEventLoopGroup;
 
     /**
      * client
@@ -53,14 +56,16 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable {
      * @param port
      */
     public KcpClient(int port) {
-        nioEventLoopGroup = new NioEventLoopGroup();
+        boolean epoll = Epoll.isAvailable();
+        boolean kqueue = KQueue.isAvailable();
+        nioEventLoopGroup = epoll ? new EpollEventLoopGroup() : (kqueue ? new KQueueEventLoopGroup() : new NioEventLoopGroup());
         Bootstrap bootstrap = new Bootstrap();
-        bootstrap.channel(NioDatagramChannel.class);
+        bootstrap.channel(epoll ? EpollDatagramChannel.class : (kqueue ? KQueueDatagramChannel.class : NioDatagramChannel.class));
         bootstrap.group(nioEventLoopGroup);
-        bootstrap.handler(new ChannelInitializer<NioDatagramChannel>() {
+        bootstrap.handler(new ChannelInitializer<DatagramChannel>() {
 
             @Override
-            protected void initChannel(NioDatagramChannel ch) throws Exception {
+            protected void initChannel(DatagramChannel ch) {
                 ChannelPipeline cp = ch.pipeline();
                 cp.addLast(new ChannelInboundHandlerAdapter() {
                     @Override
@@ -78,7 +83,7 @@ public abstract class KcpClient implements Output, KcpListerner, Runnable {
             }
         });
         ChannelFuture sync = bootstrap.bind(port).syncUninterruptibly();
-        channel = (NioDatagramChannel) sync.channel();
+        channel = (DatagramChannel) sync.channel();
         addr = channel.localAddress();
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override

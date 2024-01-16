@@ -12,7 +12,7 @@ kcp是一种独立于底层通信协议的重传算法，jkcp直接构建于udp�
   <dependency>
       <groupId>org.beykery</groupId>
       <artifactId>jkcp</artifactId>
-      <version>1.3.0</version>
+      <version>1.3.1</version>
   </dependency>
 ```
 

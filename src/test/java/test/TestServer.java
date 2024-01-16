@@ -31,7 +31,7 @@ public class TestServer extends KcpServer {
             kcp.send(bb);//echo
         } else {
             System.out.println("cost:" + (System.currentTimeMillis() - start));
-            this.close();
+            kcp.close();
         }
     }
 

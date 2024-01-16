@@ -134,8 +134,6 @@ public class KcpOnUdp {
     /**
      * update one kcp
      *
-     * @param addr
-     * @param kcp
      */
     void update() {
         //input
@@ -145,9 +143,7 @@ public class KcpOnUdp {
             dp.release();
             if (errcode != 0) {
                 this.closed = true;
-                this.release();
                 this.listerner.handleException(new IllegalStateException("input error : " + errcode), this);
-                this.listerner.handleClose(this);
                 return;
             }
         }
@@ -168,9 +164,7 @@ public class KcpOnUdp {
             errcode = this.kcp.send(bb);
             if (errcode != 0) {
                 this.closed = true;
-                this.release();
                 this.listerner.handleException(new IllegalStateException("send error : " + errcode), this);
-                this.listerner.handleClose(this);
                 return;
             }
         }
@@ -185,10 +179,10 @@ public class KcpOnUdp {
             kcp.setNextUpdate(kcp.check(cur));
         }
         //check timeout
-        if (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - lastTime > this.timeout) {
+        if (closed || (this.timeout > 0 && lastTime > 0 && System.currentTimeMillis() - lastTime > this.timeout)) {
             this.closed = true;
-            this.release();
             this.listerner.handleClose(this);
+            this.release();
         }
     }
 
@@ -213,9 +207,6 @@ public class KcpOnUdp {
 
     public void close() {
         this.closed = true;
-        this.release();
-        this.listerner.handleClose(this);
-        return;
     }
 
     public Kcp getKcp() {

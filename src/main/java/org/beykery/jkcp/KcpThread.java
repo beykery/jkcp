@@ -113,8 +113,8 @@ public class KcpThread extends Thread {
             //input
             while (!this.inputs.isEmpty()) {
                 DatagramPacket dp = this.inputs.remove();
-                KcpOnUdp ku = this.kcps.get(dp.sender());
                 ByteBuf content = dp.content();
+                KcpOnUdp ku = this.kcps.get(dp.sender());
                 if (ku == null) {
                     ku = new KcpOnUdp(this.out, dp.sender(), local, this.listerner);//初始化
                     ku.noDelay(nodelay, interval, resend, nc);
@@ -207,11 +207,9 @@ public class KcpThread extends Thread {
         }
         this.inputs.clear();
         for (KcpOnUdp ku : this.kcps.values()) {
-            if (!ku.isClosed()) {
-                ku.release();
-            }
+            ku.close();
+            ku.release();
         }
-        this.kcps.clear();
     }
 
 }

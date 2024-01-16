@@ -10,6 +10,9 @@ import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.epoll.EpollDatagramChannel;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueue;
+import io.netty.channel.kqueue.KQueueDatagramChannel;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
@@ -23,8 +26,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author beykery
  */
 public abstract class KcpServer implements Output, KcpListerner {
-    private AtomicLong counter = new AtomicLong(0);
-    private List<Channel> channels;
+    private final AtomicLong counter = new AtomicLong(0);
+    private final List<Channel> channels;
     private InetSocketAddress localAddress;
     private int nodelay;
     private int interval = Kcp.IKCP_INTERVAL;
@@ -47,25 +50,26 @@ public abstract class KcpServer implements Output, KcpListerner {
      */
     public KcpServer(int port, int workerSize) {
         boolean epoll = Epoll.isAvailable();
-        int bonds = epoll ? Runtime.getRuntime().availableProcessors() : 1;
+        boolean kqueue = KQueue.isAvailable();
+        int bonds = (epoll || kqueue) ? Runtime.getRuntime().availableProcessors() : 1;
         channels = new ArrayList<>(bonds);
-        final EventLoopGroup group = epoll ? new EpollEventLoopGroup() : new NioEventLoopGroup();
+        final EventLoopGroup group = epoll ? new EpollEventLoopGroup() : (kqueue ? new KQueueEventLoopGroup() : new NioEventLoopGroup());
         if (port <= 0 || workerSize <= 0) {
             throw new IllegalArgumentException("参数非法");
         }
         this.workers = new KcpThread[workerSize];
         Bootstrap bootstrap = new Bootstrap();
-        bootstrap.channel(epoll ? EpollDatagramChannel.class : NioDatagramChannel.class);
+        bootstrap.channel(epoll ? EpollDatagramChannel.class : (kqueue ? KQueueDatagramChannel.class : NioDatagramChannel.class));
         bootstrap.group(group);
         bootstrap.option(ChannelOption.SO_BROADCAST, true)
                 .option(ChannelOption.SO_RCVBUF, 1024 * 1024);
-        if (epoll) {
+        if (epoll || kqueue) {
             bootstrap.option(EpollChannelOption.SO_REUSEPORT, true);
         }
         bootstrap.handler(new ChannelInitializer<Channel>() {
 
             @Override
-            protected void initChannel(Channel ch) throws Exception {
+            protected void initChannel(Channel ch) {
                 ChannelPipeline cp = ch.pipeline();
                 cp.addLast(new KcpServer.UdpHandler());
             }
