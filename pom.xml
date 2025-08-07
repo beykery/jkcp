@@ -56,7 +56,7 @@
                             <dependency>
                                 <groupId>com.thoughtworks.xstream</groupId>
                                 <artifactId>xstream</artifactId>
-                                <version>1.4.15</version> <!-- apparently this needs to be exactly this version -->
+                                <version>1.4.21</version> <!-- apparently this needs to be exactly this version -->
                             </dependency>
                         </dependencies>
                     </plugin>
